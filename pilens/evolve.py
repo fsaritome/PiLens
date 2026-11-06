@@ -34,7 +34,7 @@ from .sources import data_dir
 MODEL = "claude-opus-5-5"
 MAX_SIZE = 400_000
 MAX_DEG_A, MAX_DEG_B, MAX_COEF = 4, 8, 10**6
-MAX_PSLQ = 3000
+MAX_PSLQ = 15000
 
 
 class FamilyProposal(BaseModel):
@@ -241,7 +241,7 @@ def run_round(proposal: Proposal | None = None, proposer: str = MODEL, log=print
             log(f"  skipped: {e}")
             results.append({"family": fp.model_dump(), "error": str(e)})
             continue
-        h = run_hunt(fam, M=fp.mobius, log=log)
+        h = run_hunt(fam, M=fp.mobius, max_pslq=MAX_PSLQ, log=log)
         new = sorted(set(h.get("cores", [])) - before)  # up to shift, scaling, polynomial equivalence
         before |= set(new)
         new_classes = []
