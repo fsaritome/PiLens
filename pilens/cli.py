@@ -100,8 +100,11 @@ def cmd_hunt(a) -> None:
 
 
 def cmd_evolve(a) -> None:
-    from .evolve import load_proposal, run_round
+    from .evolve import load_proposal, run_budget, run_round
 
+    if a.budget:
+        run_budget(a.budget)
+        return
     for i in range(a.rounds):
         if a.proposals:
             run_round(load_proposal(a.proposals), proposer=a.proposer)
@@ -175,6 +178,8 @@ def main(argv=None) -> None:
 
     ev = sub.add_parser("evolve", help="Claude proposes families to hunt (phase 2)")
     ev.add_argument("--rounds", type=int, default=1)
+    ev.add_argument("--budget", type=float, default=None,
+                    help="keep running API rounds until this many USD (estimated) are spent")
     ev.add_argument("--proposals", default=None, help="run one round from a JSON file instead of the API")
     ev.add_argument("--proposer", default="file", help="label recorded for --proposals rounds")
     ev.set_defaults(fn=cmd_evolve)

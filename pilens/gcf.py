@@ -340,3 +340,92 @@ def orbit_key(a, b, max_shift: int = 12) -> str:
         if best is None or key < best:
             best = key
     return f"{poly_str(best[1])} | {poly_str(best[2])}"
+
+
+# ---------------------------------------------------------------------------
+# equivalence: undo polynomial "dressing"
+# ---------------------------------------------------------------------------
+
+
+def _pdiv(num, den):
+    """Exact polynomial division (constant term first). Returns the integer quotient or None."""
+    from fractions import Fraction as F
+
+    num = [F(v) for v in num]
+    while len(num) > 1 and num[-1] == 0:
+        num.pop()
+    den = [F(v) for v in den]
+    while len(den) > 1 and den[-1] == 0:
+        den.pop()
+    if len(num) < len(den):
+        return None if any(num) else (0,)
+    q = [F(0)] * (len(num) - len(den) + 1)
+    r = num[:]
+    for i in range(len(q) - 1, -1, -1):
+        q[i] = r[i + len(den) - 1] / den[-1]
+        for j, d in enumerate(den):
+            r[i + j] -= q[i] * d
+    if any(r) or any(x.denominator != 1 for x in q):
+        return None
+    return tuple(int(x) for x in q)
+
+
+def _pmul(p, q):
+    out = [0] * (len(p) + len(q) - 1)
+    for i, x in enumerate(p):
+        for j, y in enumerate(q):
+            out[i + j] += x * y
+    return tuple(out)
+
+
+def _divisors(v: int) -> list[int]:
+    v = abs(v)
+    return [d for d in range(1, v + 1) if v % d == 0] if v else [0]
+
+
+def _linear_factors(a) -> list[tuple[int, int]]:
+    """Integer linear factors (k + m n) of a(n), m > 0, from the rational root theorem."""
+    a = list(a)
+    while len(a) > 1 and a[-1] == 0:
+        a.pop()
+    if len(a) < 2:
+        return []
+    out = []
+    if a[0] == 0:
+        out.append((0, 1))
+    core = a[:]
+    while len(core) > 1 and core[0] == 0:
+        core = core[1:]  # divide out powers of n before using the rational root theorem
+    for m in _divisors(core[-1]):
+        for k in _divisors(core[0]):
+            for kk in (k, -k):
+                if math.gcd(kk, m) == 1 and _pdiv(a, (kk, m)) is not None:
+                    out.append((kk, m))
+    return out
+
+
+def reduce_equivalence(a, b, max_steps: int = 8) -> tuple[tuple, tuple]:
+    """Strip polynomial equivalence transforms a -> c(n) a, b -> c(n) c(n-1) b.
+
+    Two fractions related this way have Mobius-related limits and the same "core",
+    so they are not different identities. Repeats while a linear factor c(n) of a(n)
+    has c(n) c(n-1) dividing b(n).
+    """
+    a, b = tuple(a), tuple(b)
+    for _ in range(max_steps):
+        for k, m in _linear_factors(a):
+            c, c_prev = (k, m), (k - m, m)
+            qa = _pdiv(a, c)
+            qb = _pdiv(b, _pmul(c, c_prev))
+            if qa is not None and qb is not None and any(qb):
+                a, b = qa, qb
+                break
+        else:
+            break
+    return a, b
+
+
+def family_key(a, b) -> str:
+    """Canonical name up to index shift, scaling and polynomial equivalence transforms."""
+    ra, rb = reduce_equivalence(a, b)
+    return orbit_key(ra, rb)

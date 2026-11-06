@@ -100,6 +100,7 @@ def run_hunt(family: gcf.Family, constant: str = "pi", depth: int = 2000, M: int
                 "scan_digits": round(float(digits[i]), 1),
                 "canonical": [list(ca), list(cb)], "scaled_by": sc,
                 "orbit": gcf.orbit_key(a, b),
+                "core": gcf.family_key(a, b),
                 "known": KNOWN.get((ca, cb), ""),
             })
         hits.sort(key=lambda r: (-STATUS_RANK[r["status"]], -r["digits"]))
@@ -118,6 +119,7 @@ def run_hunt(family: gcf.Family, constant: str = "pi", depth: int = 2000, M: int
         "target": sides["target"], "null": sides["null"],
         "distinct_relations": distinct(sides["target"]["hits"]),
         "orbits": sorted({r["orbit"] for r in distinct(sides["target"]["hits"])}),
+        "cores": sorted({r["core"] for r in distinct(sides["target"]["hits"])}),
         "elapsed_s": round(time.time() - t0, 1), "saved": time.strftime("%Y-%m-%d %H:%M:%S"),
     }
     if save:
@@ -129,7 +131,8 @@ def run_hunt(family: gcf.Family, constant: str = "pi", depth: int = 2000, M: int
             landscape(A, B, digits, conv, sides[side]["hits"], d / f"landscape_{side}.png", axes)
         (d / "hunt.json").write_text(json.dumps(res, indent=1, ensure_ascii=False), encoding="utf-8")
     log(f"  distinct verified/probable fractions: {len(res['distinct_relations'])} (up to scaling), "
-        f"{len(res['orbits'])} up to scaling and index shift; "
+        f"{len(res['orbits'])} up to scaling and index shift, {len(res['cores'])} after removing "
+        f"polynomial equivalences; "
         f"{res['elapsed_s']}s")
     return res
 
@@ -207,3 +210,19 @@ def list_hunts() -> list[dict]:
     for f in sorted(hunts_dir().glob("*/hunt.json")):
         out.append(json.loads(f.read_text(encoding="utf-8")))
     return sorted(out, key=lambda r: r["saved"])
+
+
+def migrate_cores() -> int:
+    """Add the 'core' key (polynomial-equivalence class) to hunts saved before it existed."""
+    n = 0
+    for f in hunts_dir().glob("*/hunt.json"):
+        h = json.loads(f.read_text(encoding="utf-8"))
+        for side in ("target", "null"):
+            for r in h[side]["hits"]:
+                r["core"] = gcf.family_key(tuple(r["a"]), tuple(r["b"]))
+        for r in h["distinct_relations"]:
+            r["core"] = gcf.family_key(tuple(r["a"]), tuple(r["b"]))
+        h["cores"] = sorted({r["core"] for r in h["distinct_relations"]})
+        f.write_text(json.dumps(h, indent=1, ensure_ascii=False), encoding="utf-8")
+        n += 1
+    return n

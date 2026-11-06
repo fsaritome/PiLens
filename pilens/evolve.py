@@ -66,8 +66,10 @@ Constraints: degree of a(n) <= {MAX_DEG_A}, degree of b(n) <= {MAX_DEG_B}, |coef
 {MAX_COEF}, at most {MAX_SIZE:,} combinations per family (product of range widths). The sign \
 symmetry a -> -a is removed automatically.
 
-Goal: maximise the number of *new distinct* identities (up to the trivial scaling a -> c*a, \
-b -> c^2*b) that are verified. Prefer families that differ structurally from those already \
+Goal: maximise the number of *new distinct cores* that are verified. A core is what is left \
+after removing index shifts (n -> n + k), scalings (a -> c*a, b -> c^2*b) and polynomial \
+equivalence transforms (a -> c(n) a, b -> c(n) c(n-1) b for a linear c(n)), so dressed-up copies \
+of known fractions, e.g. degree-lifted ones that factor, score nothing. Prefer families that differ structurally from those already \
 searched (e.g. other degree pairs, the balance between the leading terms of a and b that \
 governs convergence, b(n) with a factor like n^2 or (2n-1)^2), rather than widening ranges \
 blindly. Known classical formulas: {'; '.join(KNOWN.values())}."""
@@ -86,24 +88,38 @@ def history() -> list[dict]:
     return [json.loads(line) for line in f.read_text(encoding="utf-8").splitlines() if line.strip()]
 
 
-def summary_for_prompt(max_identities: int = 60) -> str:
+def summary_for_prompt(max_identities: int = 80, detailed_hunts: int = 30) -> str:
+    """What Claude sees each round. Kept bounded: the last hunts in detail, older ones
+    as one-liners, identities grouped by core (after removing shifts, scalings and
+    polynomial equivalence transforms)."""
     hunts = list_hunts()
-    lines = ["## Hunts so far"]
-    seen: dict[str, dict] = {}
-    for h in hunts:
+    lines = [f"## Hunts so far: {len(hunts)}"]
+    old, recent = hunts[:-detailed_hunts], hunts[-detailed_hunts:]
+    if old:
+        lines.append("Older hunts (ranges, then distinct cores found):")
+        for h in old:
+            lines.append(f"- a {h['family']['a']} b {h['family']['b']} M={h.get('mobius_M', 6)}: "
+                         f"{len(h.get('cores', []))} cores")
+    lines.append("Recent hunts:")
+    for h in recent:
         t, n = h["target"]["count"], h["null"]["count"]
         lines.append(
-            f"- {h['family']['name'] or h['id']}: a ranges {h['family']['a']}, b ranges {h['family']['b']}; "
-            f"{h['n_candidates']:,} fractions, {h['n_eligible']:,} converged fast enough; "
-            f"pi: {t['verified']} verified, {t['probable']} probable "
-            f"({len(h['distinct_relations'])} distinct); random-constant control: "
-            f"{n['verified'] + n['probable']} hits")
+            f"- {h['family']['name'] or h['id']}: a {h['family']['a']}, b {h['family']['b']}, "
+            f"M={h.get('mobius_M', 6)}; {h['n_candidates']:,} fractions, {h['n_eligible']:,} converged; "
+            f"pi: {t['verified']} verified, {t['probable']} probable, {len(h.get('cores', []))} distinct cores; "
+            f"control hits: {n['verified'] + n['probable']}")
+    cores: dict[str, list] = {}
+    for h in hunts:
+        if h["constant"] != "pi":
+            continue
         for r in h["distinct_relations"]:
-            seen.setdefault(r["orbit"], r)
-    lines.append(f"\n## Distinct identities found so far: {len(seen)} (showing up to {max_identities})")
-    for r in list(seen.values())[:max_identities]:
-        lines.append(f"- a(n) = {r['a_str']}, b(n) = {r['b_str']}  ->  {r['relation']}  "
-                     f"[{r['status']}, {r['rate']}]{'  (classical)' if r['known'] else ''}")
+            cores.setdefault(r.get("core", r["orbit"]), []).append(r)
+    lines.append(f"\n## Distinct identity cores with pi: {len(cores)} (showing up to {max_identities}; "
+                 f"'variants' = fractions that reduce to this core)")
+    for core, rs in list(cores.items())[:max_identities]:
+        r = rs[0]
+        lines.append(f"- core {core}: e.g. a(n) = {r['a_str']}, b(n) = {r['b_str']} -> {r['relation']} "
+                     f"[{r['status']}, {r['rate']}], variants {len(rs)}{'  (classical)' if r['known'] else ''}")
     ratings = data_dir() / "ratings.jsonl"
     if ratings.exists():
         rs = [json.loads(x) for x in ratings.read_text(encoding="utf-8").splitlines() if x.strip()]
@@ -111,13 +127,17 @@ def summary_for_prompt(max_identities: int = 60) -> str:
         if fr:
             lines.append("\n## Human ratings of identities")
             lines += [f"- {r['key']}: {'+1' if r['rating'] > 0 else '-1'} {r.get('note', '')}" for r in fr[-30:]]
-    for r in history()[-5:]:
+    hist = history()
+    if hist:
+        lines.append("\n## Round scores (new cores): " + ", ".join(f"r{r['round']}={r['score']}" for r in hist))
+    for r in hist[-5:]:
         lines.append(f"\n## Round {r['round']} notes ({r['proposer']}): {r['notes']}")
     return "\n".join(lines)
 
 
 LAST_USAGE: dict = {}
 PRICE_IN, PRICE_OUT = 4.0, 20.0  # USD per million tokens, claude-opus-5-5
+EFFORT = "high"
 
 
 def propose_api(summary: str) -> Proposal:
@@ -128,6 +148,7 @@ def propose_api(summary: str) -> Proposal:
         model=MODEL,
         max_tokens=16000,
         system=SYSTEM,
+        output_config={"effort": EFFORT},
         messages=[{"role": "user", "content": summary + "\n\nPropose the next 1-3 families."}],
         output_format=Proposal,
     )
@@ -154,13 +175,28 @@ def validate(fp: FamilyProposal) -> gcf.Family:
     return fam
 
 
+def _known_cores() -> set[str]:
+    return {r.get("core", r["orbit"]) for h in list_hunts() if h["constant"] == "pi"
+            for r in h["distinct_relations"]}
+
+
+def _append(rec: dict) -> None:
+    with (evolve_dir() / "rounds.jsonl").open("a", encoding="utf-8") as f:
+        f.write(json.dumps(rec, ensure_ascii=False) + "\n")
+
+
+def total_spend() -> float:
+    return round(sum((r.get("usage") or {}).get("est_cost_usd", 0) for r in history()), 4)
+
+
 def run_round(proposal: Proposal | None = None, proposer: str = MODEL, log=print) -> dict:
-    before = {r["orbit"] for h in list_hunts() for r in h["distinct_relations"]}
+    before = _known_cores()
     usage = None
     if proposal is None:
-        log(f"asking {MODEL} for proposals...")
+        log(f"asking {MODEL} (effort {EFFORT}) for proposals...")
         proposal = propose_api(summary_for_prompt())
         usage = dict(LAST_USAGE)
+        LAST_USAGE.clear()
         log(f"  tokens: {usage['input_tokens']:,} in, {usage['output_tokens']:,} out "
             f"(~${usage['est_cost_usd']:.3f})")
     results = []
@@ -173,20 +209,53 @@ def run_round(proposal: Proposal | None = None, proposer: str = MODEL, log=print
             results.append({"family": fp.model_dump(), "error": str(e)})
             continue
         h = run_hunt(fam, M=fp.mobius, log=log)
-        new = sorted(set(h["orbits"]) - before)  # distinct up to shift and scaling
+        new = sorted(set(h.get("cores", [])) - before)  # up to shift, scaling, polynomial equivalence
         before |= set(new)
         results.append({"family": fp.model_dump(), "hunt_id": h["id"], "n_candidates": h["n_candidates"],
                         "verified": h["target"]["count"]["verified"], "probable": h["target"]["count"]["probable"],
                         "null_hits": h["null"]["count"]["verified"] + h["null"]["count"]["probable"],
-                        "new_distinct": len(new), "new_orbits": new})
-        log(f"  new distinct identities this family: {len(new)}")
+                        "new_distinct": len(new), "new_cores": new})
+        log(f"  new distinct cores this family: {len(new)}")
     rec = {"round": len(history()) + 1, "proposer": proposer, "ts": time.strftime("%Y-%m-%d %H:%M:%S"),
            "notes": proposal.notes, "results": results, "usage": usage,
            "score": sum(r.get("new_distinct", 0) for r in results)}
-    with (evolve_dir() / "rounds.jsonl").open("a", encoding="utf-8") as f:
-        f.write(json.dumps(rec, ensure_ascii=False) + "\n")
-    log(f"\nround {rec['round']} score (new distinct identities): {rec['score']}")
+    _append(rec)
+    log(f"\nround {rec['round']} score (new distinct cores): {rec['score']}")
     return rec
+
+
+def run_budget(budget_usd: float, max_rounds: int = 1000, log=print) -> float:
+    """Run API rounds until the estimated spend of this run reaches ``budget_usd``.
+
+    Stops early enough that the next round cannot overshoot (one call is capped at
+    16k output tokens, about $0.35 plus input). Returns the estimated spend.
+    """
+    spent, failures = 0.0, 0
+    reserve = 0.6
+    for i in range(max_rounds):
+        if spent + reserve > budget_usd:
+            log(f"budget reached: ~${spent:.2f} of ${budget_usd:.2f}")
+            break
+        log(f"\n===== run round {i + 1}  (spent so far ~${spent:.2f} of ${budget_usd:.2f}) =====")
+        try:
+            rec = run_round(log=log)
+            spent += (rec.get("usage") or {}).get("est_cost_usd", 0)
+            failures = 0
+        except Exception as e:  # keep going on transient problems, but account for the cost
+            failures += 1
+            cost = LAST_USAGE.get("est_cost_usd", reserve) if LAST_USAGE else reserve
+            spent += cost
+            _append({"round": len(history()) + 1, "proposer": MODEL, "ts": time.strftime("%Y-%m-%d %H:%M:%S"),
+                     "notes": f"round failed: {type(e).__name__}: {e}", "results": [],
+                     "usage": dict(LAST_USAGE) or {"est_cost_usd": cost, "estimated": True}, "score": 0})
+            LAST_USAGE.clear()
+            log(f"round failed ({failures} in a row): {type(e).__name__}: {e}")
+            if failures >= 3:
+                log("3 failures in a row, stopping")
+                break
+            time.sleep(30)
+    log(f"\nrun finished: ~${spent:.2f} spent; total recorded over all runs ~${total_spend():.2f}")
+    return spent
 
 
 def load_proposal(path: str) -> Proposal:

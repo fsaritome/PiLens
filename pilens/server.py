@@ -203,12 +203,12 @@ def formulas_index():
         rows.append(f"<tr><td><a href='/formulas/{h['id']}'>{html.escape(h['family']['name'] or h['id'])}</a></td>"
                     f"<td>{h['n_candidates']:,}</td><td>{h['n_eligible']:,}</td>"
                     f"<td>{html.escape(h['constant'])}</td><td>{h['target']['matches']}</td>"
-                    f"<td class='sig'>{len(h.get('orbits', []))}</td>"
+                    f"<td class='sig'>{len(h.get('cores', h.get('orbits', [])))}</td>"
                     f"<td>{h['null']['matches']}</td><td>{nh}</td></tr>")
     by_const: dict[str, dict[str, list]] = {}
     for h in hunts:
         for r in h["distinct_relations"]:
-            by_const.setdefault(h["constant"], {}).setdefault(r["orbit"], []).append(r)
+            by_const.setdefault(h["constant"], {}).setdefault(r.get("core", r["orbit"]), []).append(r)
     sections = []
     for const, orbits in by_const.items():
         rows_i = []
@@ -238,9 +238,10 @@ The same search against a <b>random constant</b> is the control: it must stay at
 <h2>Hunts</h2><div class="card"><table><tr><th>family</th><th>fractions</th><th>converged</th>
 <th>constant</th><th>matches</th><th>distinct identities</th><th>control matches</th><th>control confirmed</th></tr>
 {''.join(rows) or '<tr><td>none yet: <code>pilens hunt</code></td></tr>'}</table></div>
-<p class="mut">"Distinct" means different up to two trivial changes: starting the same fraction a few
-terms later (n &rarr; n + k) and rescaling (a &rarr; c&middot;a, b &rarr; c&sup2;&middot;b). Rows can still be
-equivalent through deeper transformations, and "classical" marks only the few formulas in PiLens's own short list,
+<p class="mut">"Distinct" means different after removing three trivial changes: starting the same fraction
+a few terms later (n &rarr; n + k), rescaling (a &rarr; c&middot;a, b &rarr; c&sup2;&middot;b), and polynomial
+"dressing" (a &rarr; c(n)&middot;a, b &rarr; c(n)c(n&minus;1)&middot;b). Each row is one such core; "variants" counts
+the fractions that reduce to it. Rows can still be equivalent through deeper transformations, and "classical" marks only the few formulas in PiLens's own short list,
 so an unmarked row is <i>not</i> a claim of novelty.</p>
 {ident_html}
 <h2>Claude rounds</h2><div class="card"><table><tr><th>round</th><th>proposer</th><th>new identities</th>

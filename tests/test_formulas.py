@@ -84,3 +84,13 @@ def test_formula_pages():
     r = c.post("/api/rate-formula", json={"run": hid, "key": "2n+1 | n^2", "rating": 1})
     assert r.json()["up"] == 1
     assert c.get("/formulas/..%2F..%2Fx").status_code == 404
+
+
+def test_equivalence_reduction():
+    # (2n+1)(n+1) | n^3 (n+1) is 2n+1 | n^2 dressed with c(n) = n + 1
+    assert gcf.family_key((1, 3, 2), (0, 0, 0, 1, 1)) == "2n+1 | n^2"
+    # 3n(n+1) | -n^2 (2n-3)(n+1) reduces to the 3n family
+    assert gcf.family_key((0, 3, 3), (0, 0, 3, 1, -2)) == gcf.family_key((0, 3), (0, 3, -2))
+    # a fraction with no linear factor in a(n) is left alone
+    a, b = (-1, 3, 3), (0, 0, 6, -1, -2)
+    assert gcf.reduce_equivalence(a, b) == (a, b)
