@@ -252,6 +252,31 @@ Two reasons: fast π formulas have highly structured lower coefficients (they co
 hypergeometric series and similar), which a box of integers almost never hits; and the
 families were large, so PSLQ only checked a random 4–10 % of their fast fractions.
 
+## 3-D walk and its shell (lens `walk3d`, 2026-11-06)
+
+Each digit is a unit step in one of `base` directions spread evenly over a sphere
+(Fibonacci points, centred so uniform digits give no drift; bases below 6 use groups of
+digits). The **shell** is the convex hull of the path (scipy/qhull); its volume
+(÷ steps^1.5, the random-walk growth law), surface area and roundness are lens metrics next
+to ν, gyration radius, asphericity and end-to-end distance. Page: `/run/<run>/walk3d/3d`,
+with the path and shell in 3D, a histogram of 200 random walks' shell volumes, and the shell
+as an STL file (opens in 3D viewers, Blender, 3D-printing slicers).
+
+| run | p_lens | strongest metric | verdict |
+|---|---|---|---|
+| π base 10, n = 10⁵ | 1.00 | fft_peak z = +1.5 | random |
+| π base 10, n = 10⁶ | 0.87 | img_compress z = +1.7 | random |
+| π base 4, n = 10⁵ / 10⁶ | 0.21 / 1.00 | fft_flatness z = +2.4 / end-to-end z = −1.3 | random |
+| π base 16 | 1.00 | asphericity z = +1.2 | random |
+| e, √2 (base 10) | 0.50, 0.75 | end-to-end z = +2.0 / −0.95 | random |
+| π continued fraction | 1.00 | | random |
+| planted Markov 1 % | 1.00 | | not detected (walks only see drift) |
+| **BBP series terms** (positive control) | **0.007** | **ν = 0.23, z = −17** | **flagged**: the walk stays balled up, shell 1,500× smaller |
+
+Validation (`pilens validate --lens walk3d`, 3 % planted structure): bias flagged (q = 0.007),
+period and Markov not, random not. Like the 2-D walk, the 3-D walk sees bias and drift, not
+correlations. π's shell is ordinary (e.g. base 10, n = 10⁵: volume z = −0.57).
+
 ## Conclusion
 
 * **Phase 1:** no lens finds structure in the digits of π (or e, √2) that random digits

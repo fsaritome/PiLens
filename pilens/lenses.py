@@ -177,6 +177,62 @@ def walk(x, base, *, px=512):
     })
 
 
+def walk3d_path(x, base) -> tuple[np.ndarray, int]:
+    """The 3-D walk of a symbol sequence: (positions, symbols per step).
+
+    Each symbol (or group of k symbols for bases < 6, so there are at least 6 directions)
+    picks one of B^k directions spread evenly over the sphere (Fibonacci points). The
+    directions are centred so the walk has no drift when symbols are uniform.
+    """
+    k = 1
+    while base ** k < 6:
+        k += 1
+    m = len(x) // k
+    sym = np.zeros(m, dtype=np.int64)
+    for j in range(k):
+        sym = sym * base + x[j: m * k: k]
+    N = base ** k
+    i = np.arange(N) + 0.5
+    phi = np.arccos(1 - 2 * i / N)
+    th = np.pi * (1 + 5 ** 0.5) * i
+    dirs = np.stack([np.cos(th) * np.sin(phi), np.sin(th) * np.sin(phi), np.cos(phi)], axis=1)
+    dirs -= dirs.mean(axis=0)
+    pos = np.vstack([np.zeros(3), np.cumsum(dirs[sym], axis=0)])
+    return pos, k
+
+
+def shell(pos: np.ndarray):
+    """The convex hull ("shell") of a 3-D point set: scipy ConvexHull (volume, area, simplices)."""
+    from scipy.spatial import ConvexHull
+
+    return ConvexHull(pos)
+
+
+@lens("walk3d", "3-D walk: each symbol is a unit step in one of base evenly spread directions; "
+                "its convex hull (shell) gives volume and surface area.")
+def walk3d(x, base, *, px=512):
+    pos, _ = walk3d_path(x, base)
+    n = len(pos) - 1
+    cen = pos - pos.mean(axis=0)
+    gyr = cen.T @ cen / len(pos)
+    lam, vec = np.linalg.eigh(gyr)  # ascending
+    proj = cen @ vec[:, [2, 1]]  # view along the thinnest axis
+    img = _raster_points(proj, px)
+    h = shell(pos)
+    vol, area = float(h.volume), float(h.area)
+    l1, l2, l3 = lam[::-1]
+    return LensResult(img, {
+        "nu": walk_scaling(pos),
+        "shell_volume_norm": vol / n ** 1.5,  # random walk: hull volume grows like n^(3/2)
+        "shell_area_norm": area / n,
+        "shell_sphericity": float(np.pi ** (1 / 3) * (6 * vol) ** (2 / 3) / area),
+        "rg_norm": float(np.sqrt(lam.sum()) / np.sqrt(n)),
+        "asphericity": float(((l1 - l2) ** 2 + (l2 - l3) ** 2 + (l1 - l3) ** 2) / (2 * lam.sum() ** 2)),
+        "end_to_end_norm": float(np.linalg.norm(pos[-1]) / np.sqrt(n)),
+        "_shell_vertices": int(len(h.vertices)),
+    })
+
+
 @lens("grid", "Colour grid: symbols laid out in rows of `width`, plus a period scan over widths.")
 def grid(x, base, *, width=256, max_rows=512, fold_max=64):
     rows = min(len(x) // width, max_rows)

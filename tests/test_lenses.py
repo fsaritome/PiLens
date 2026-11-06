@@ -59,3 +59,17 @@ def test_evaluate_splits_info_features():
     _, metrics, info = evaluate("grid", X10, 10)
     assert "_fold_best_width" in info and "_fold_best_width" not in metrics
     assert {"img_compress_ratio", "img_entropy_bits", "fft_slope", "fft_peak_log10"} <= set(metrics)
+
+
+def test_walk3d_shell_volume_scales_like_a_random_walk():
+    import numpy as np
+
+    from pilens.lenses import get_lens, shell, walk3d_path
+
+    rng = np.random.default_rng(3)
+    f = get_lens("walk3d").fn(rng.integers(0, 10, 20000), 10).features
+    assert 0.4 < f["nu"] < 0.6 and 0.02 < f["shell_volume_norm"] < 1.0
+    # a cube's corners: hull volume 1
+    assert abs(shell(np.array([[i, j, k] for i in (0, 1) for j in (0, 1) for k in (0, 1)], float)).volume - 1) < 1e-9
+    pos, k = walk3d_path(rng.integers(0, 2, 999), 2)
+    assert k == 3 and len(pos) == 334  # base 2: groups of 3 bits -> 8 directions

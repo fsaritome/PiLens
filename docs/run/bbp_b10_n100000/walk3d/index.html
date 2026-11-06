@@ -1,0 +1,52 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1"><title>walk3d · bbp_b10_n100000</title>
+<style>
+:root{--bg:#fbfaf7;--fg:#1d1d1f;--mut:#6b6b70;--card:#fff;--line:#e4e2dc;--acc:#b4441c;--good:#2f7d32;--bad:#b3261e}
+@media (prefers-color-scheme:dark){:root{--bg:#141416;--fg:#ececec;--mut:#9a9aa0;--card:#1d1d20;--line:#2d2d31;--acc:#f08a5d;--good:#7bc47f;--bad:#f2867e}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.5 system-ui,-apple-system,Segoe UI,sans-serif}
+main{max-width:1180px;margin:0 auto;padding:20px 16px 60px}a{color:var(--acc);text-decoration:none}a:hover{text-decoration:underline}
+h1{font-size:22px;margin:0 0 4px}h2{font-size:17px;margin:28px 0 8px}.mut{color:var(--mut)}
+table{border-collapse:collapse;width:100%;font-variant-numeric:tabular-nums}th,td{padding:5px 8px;border-bottom:1px solid var(--line);text-align:right}
+th:first-child,td:first-child{text-align:left}th{font-weight:600;color:var(--mut);font-size:13px}
+.sig{color:var(--acc);font-weight:600}.pair{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:14px 0}
+@media (max-width:700px){.pair{grid-template-columns:1fr}}
+figure{margin:0;background:var(--card);border:1px solid var(--line);border-radius:10px;padding:10px}
+figure img{width:100%;image-rendering:pixelated;border-radius:4px;display:block}figcaption{font-size:13px;color:var(--mut);margin-top:6px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:12px 14px;margin:12px 0;overflow-x:auto}
+.rate{display:flex;gap:10px;align-items:center;flex-wrap:wrap}button{font:inherit;padding:7px 14px;border-radius:8px;border:1px solid var(--line);background:var(--card);color:var(--fg);cursor:pointer}
+button.up:hover{border-color:var(--good)}button.down:hover{border-color:var(--bad)}input[type=text]{font:inherit;padding:7px 10px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--fg);min-width:220px;flex:1}
+.nav{display:flex;justify-content:space-between;gap:10px;margin-top:6px}.thumbs{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
+.thumbs a{display:block;background:var(--card);border:1px solid var(--line);border-radius:8px;padding:6px;font-size:13px;color:var(--fg)}.thumbs img{width:100%;aspect-ratio:1;object-fit:contain;image-rendering:pixelated}
+code{font-size:13px}
+#rate,button[onclick^='rateF']{display:none!important}.snapshot{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:6px 10px;font-size:13px;color:var(--mut);margin-bottom:10px}</style></head><body><main><div class='snapshot'>Read-only snapshot of the PiLens gallery, exported 2026-11-06 16:30. Code and how to run it yourself: <a href='https://github.com/fsaritome/PiLens'>github.com/fsaritome/PiLens</a>.</div>
+<div class="nav"><a href="../../../index.html">&larr; all runs</a><span><a href="../walk/index.html">&lsaquo; walk</a> &nbsp;
+<a href="../chord/index.html">chord &rsaquo;</a></span></div>
+<h1>walk3d <span class="mut">on bbp, base 10, n = 100,000</span></h1>
+
+<p><a href="3d/index.html"><b>&rarr; view the walk and its shell in 3D</b></a></p>
+<p class="mut">Verdict: <span class='sig'>differs from random controls after correction</span>. p_maxT = 0.003; classifier accuracy 1.00 (chance 0.5), p = 0.003; p_lens = 0.007;
+q (BH over 8 lens(es) in this run) = 0.007; 300 controls.</p>
+<div class="pair">
+<figure><img src="../../../img/bbp_b10_n100000/walk3d_pi.png" alt="lens on bbp"><figcaption>bbp</figcaption></figure>
+<figure><img src="../../../img/bbp_b10_n100000/walk3d_ctrl.png" alt="lens on a random control"><figcaption>random control (same n, base, null)</figcaption></figure>
+</div>
+<div class="card rate" id="rate">
+<span>Does this lens show anything interesting?</span>
+<button class="up" onclick="rate(1)">&#128077; yes</button><button class="down" onclick="rate(-1)">&#128078; no</button>
+<input type="text" id="note" placeholder="optional note (what do you see?)">
+<span class="mut" id="counts">0&#128077; 0&#128078;</span>
+</div>
+<div class="card"><table><tr><th>metric</th><th>bbp</th><th>controls mean &plusmn; sd</th><th>z</th><th>p (two-sided)</th></tr>
+<tr><td>nu</td><td>0.2305</td><td>0.4976 &plusmn; 0.015</td><td class='sig'>-17.43</td><td>0.003</td></tr><tr><td>fft_slope</td><td>-1.5476</td><td>-2.2284 &plusmn; 0.047</td><td class='sig'>+14.51</td><td>0.003</td></tr><tr><td>fft_flatness</td><td>0.0447</td><td>0.1088 &plusmn; 0.011</td><td class='sig'>-5.76</td><td>0.003</td></tr><tr><td>fft_peak_log10</td><td>4.7837</td><td>4.1065 &plusmn; 0.171</td><td class='sig'>+3.96</td><td>0.003</td></tr><tr><td>rg_norm</td><td>0.0351</td><td>0.3934 &plusmn; 0.096</td><td class='sig'>-3.75</td><td>0.003</td></tr><tr><td>shell_area_norm</td><td>0.0201</td><td>2.0567 &plusmn; 0.566</td><td class='sig'>-3.60</td><td>0.003</td></tr><tr><td>shell_volume_norm</td><td>0.000195</td><td>0.2083 &plusmn; 0.077</td><td class='sig'>-2.71</td><td>0.007</td></tr><tr><td>end_to_end_norm</td><td>0.0482</td><td>0.9085 &plusmn; 0.392</td><td>-2.20</td><td>0.023</td></tr><tr><td>asphericity</td><td>0.6704</td><td>0.3950 &plusmn; 0.198</td><td>+1.39</td><td>0.159</td></tr><tr><td>img_entropy_bits</td><td>0.7228</td><td>0.8019 &plusmn; 0.139</td><td>-0.57</td><td>0.618</td></tr><tr><td>shell_sphericity</td><td>0.8098</td><td>0.8216 &plusmn; 0.044</td><td>-0.27</td><td>0.767</td></tr><tr><td>img_compress_ratio</td><td>0.1562</td><td>0.1517 &plusmn; 0.041</td><td>+0.11</td><td>0.910</td></tr></table></div>
+<p class="mut">Params: <code>{&quot;px&quot;: 512}</code>. Saved 2026-11-06 16:26:59,
+8s.</p>
+<script>
+async function rate(v){
+  const note=document.getElementById('note').value;
+  const res=await fetch('/api/rate',{method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({run:"bbp_b10_n100000",key:"walk3d",rating:v,note:note})});
+  const j=await res.json();
+  document.getElementById('counts').textContent=j.up+'\u{1F44D} '+j.down+'\u{1F44E} saved';
+  document.getElementById('note').value='';
+}
+</script></main></body></html>

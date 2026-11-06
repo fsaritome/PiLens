@@ -49,3 +49,17 @@ def test_chord_3d_page():
     r = c.get(f"/run/{run}/chord/3d")
     assert r.status_code == 200 and "scatter3d" in r.text and '"ctrl"' in r.text
     assert c.get("/run/nope/chord/3d").status_code == 404
+
+
+def test_walk3d_page_and_stl():
+    main(["run", "--lens", "walk3d", "--source", "random", "--base", "10", "--n", "3000", "--controls", "20",
+          "--no-classifier", "--jobs", "1"])
+    run = next(d.name for d in store.list_runs() if d.name.startswith("random_s12345_b10_n3000"))
+    c = TestClient(app)
+    assert "walk and its shell in 3D" in c.get(f"/run/{run}/walk3d").text
+    r = c.get(f"/run/{run}/walk3d/3d")
+    assert r.status_code == 200 and "mesh3d" in r.text and "percentile" in r.text
+    assert c.get("/").status_code == 200  # the cached control volumes must not break the index
+    stl = c.get(f"/run/{run}/walk3d/shell.stl")
+    assert stl.status_code == 200 and stl.text.startswith("solid") and stl.text.count("facet normal") >= 4
+    assert c.get(f"/run/{run}/walk3d/other.stl").status_code == 404

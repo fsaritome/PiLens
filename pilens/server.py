@@ -9,6 +9,7 @@ import html
 import json
 from collections import Counter
 
+import numpy as np
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import FileResponse, HTMLResponse
 from pydantic import BaseModel
@@ -119,6 +120,7 @@ def lens_page(run: str, key: str):
 <a href="/run/{run}/{next_k}">{html.escape(next_k)} &rsaquo;</a></span></div>
 <h1>{html.escape(key)} <span class="mut">on {html.escape(r['source'])}, base {r['base']}, n = {r['n']:,}</span></h1>
 {f'<p><a href="/run/{run}/chord/3d"><b>&rarr; view the chords in 3D</b></a></p>' if key == 'chord' else ''}
+{f'<p><a href="/run/{run}/walk3d/3d"><b>&rarr; view the walk and its shell in 3D</b></a></p>' if key == 'walk3d' else ''}
 <p class="mut">Verdict: {verdict}. p_maxT = {_fmt(r['p_maxT'])}; {clf}; p_lens = {_fmt(r['p_lens'])};
 q (BH over {len(keys)} lens(es) in this run) = {_fmt(q)}; {r['n_controls']} controls.</p>
 <div class="pair">
@@ -148,15 +150,14 @@ async function rate(v){{
     return page(f"{key} · {run}", body)
 
 
-@app.get("/run/{run}/chord/3d", response_class=HTMLResponse)
-def chord_3d(run: str):
-    """The chord lens stacked in time: each chord is lifted to its position in the
-    sequence, so order (not just counts) becomes visible. Source next to a control."""
+def _run_sequences(run: str, key: str):
+    """(run record, source sequence, control symbols) for a saved run's lens ``key``.
+    The control is the same draw the gallery's control image uses."""
     import re
 
     from .sources import get_source, make_control
 
-    f = (store.runs_dir() / run / "chord.json").resolve()
+    f = (store.runs_dir() / run / f"{key}.json").resolve()
     if not f.is_relative_to(store.runs_dir().resolve()) or not f.exists():
         raise HTTPException(404)
     r = json.loads(f.read_text())
@@ -171,7 +172,14 @@ def chord_3d(run: str):
         seq = get_source(src, r["base"], r["n"], seed=seed, strength=strength)
     except ValueError:
         raise HTTPException(404)
-    ctrl = make_control(seq, 1)
+    return r, seq, make_control(seq, 1)
+
+
+@app.get("/run/{run}/chord/3d", response_class=HTMLResponse)
+def chord_3d(run: str):
+    """The chord lens stacked in time: each chord is lifted to its position in the
+    sequence, so order (not just counts) becomes visible. Source next to a control."""
+    r, seq, ctrl = _run_sequences(run, "chord")
     k = 2001
     data = {"base": int(r["base"]), "src": [int(v) for v in seq.symbols[:k]],
             "ctrl": [int(v) for v in ctrl[:k]], "name": r["source"]}
@@ -257,6 +265,197 @@ function draw() {{
 draw();
 </script>"""
     return page(f"chord 3D · {run}", body)
+
+
+def _walk3d(run: str):
+    from .lenses import shell, walk3d_path
+
+    r, seq, ctrl = _run_sequences(run, "walk3d")
+    out = {}
+    for name, x in (("src", seq.symbols), ("ctrl", ctrl)):
+        pos, k = walk3d_path(x, r["base"])
+        out[name] = (pos, shell(pos))
+    out["seq"] = seq
+    return r, out, k
+
+
+def _control_volumes(run: str, seq, base: int, n_ctrl: int = 200) -> list[float]:
+    """Shell volume / steps^1.5 of ``n_ctrl`` random control walks (cached in the run dir)."""
+    from .lenses import shell, walk3d_path
+    from .sources import make_control
+
+    f = store.runs_dir() / run / "walk3d_control_volumes.cache"
+    if f.exists():
+        return json.loads(f.read_text())
+    vols = []
+    for i in range(n_ctrl):
+        pos, _ = walk3d_path(make_control(seq, 50_000 + i), base)
+        vols.append(float(shell(pos).volume) / (len(pos) - 1) ** 1.5)
+    f.write_text(json.dumps(vols))
+    return vols
+
+
+def _stl(pos, hull, name: str) -> str:
+    """ASCII STL of a convex hull, facets oriented outwards (normals from qhull)."""
+    lines = [f"solid {name}"]
+    c = pos[hull.vertices].mean(axis=0)
+    for simp, eq in zip(hull.simplices, hull.equations):
+        a, b, d = pos[simp]
+        nrm = eq[:3]
+        if np.dot(np.cross(b - a, d - a), nrm) < 0:
+            b, d = d, b
+        lines.append(f" facet normal {nrm[0]:.6e} {nrm[1]:.6e} {nrm[2]:.6e}\n  outer loop")
+        for v in (a, b, d):
+            v = v - c
+            lines.append(f"   vertex {v[0]:.6e} {v[1]:.6e} {v[2]:.6e}")
+        lines.append("  endloop\n endfacet")
+    lines.append(f"endsolid {name}")
+    return "\n".join(lines) + "\n"
+
+
+@app.get("/run/{run}/walk3d/{which}.stl")
+def walk3d_stl(run: str, which: str):
+    from fastapi.responses import Response
+
+    if which not in ("shell", "shell_control"):
+        raise HTTPException(404)
+    _, out, _ = _walk3d(run)
+    pos, hull = out["src" if which == "shell" else "ctrl"]
+    return Response(_stl(pos, hull, f"{run}_{which}"), media_type="model/stl",
+                    headers={"Content-Disposition": f'attachment; filename="{run}_{which}.stl"'})
+
+
+@app.get("/run/{run}/walk3d/3d", response_class=HTMLResponse)
+def walk3d_page(run: str):
+    """The 3-D walk with its convex hull ("shell"), source next to a control, and the
+    shell's volume compared with the random controls the judge used."""
+    r, out, k = _walk3d(run)
+    metrics = {m["name"]: m for m in r["metrics"]}
+
+    def pack(pos, hull):
+        pos = pos - pos[hull.vertices].mean(axis=0)  # centre on the shell for display
+        step = max(1, len(pos) // 12000)
+        p = pos[::step]
+        vi = {int(v): j for j, v in enumerate(hull.vertices)}
+        hv = pos[hull.vertices]
+        tri = [[vi[int(a)] for a in s] for s in hull.simplices]
+        return {"x": p[:, 0].round(3).tolist(), "y": p[:, 1].round(3).tolist(), "z": p[:, 2].round(3).tolist(),
+                "hx": hv[:, 0].round(3).tolist(), "hy": hv[:, 1].round(3).tolist(), "hz": hv[:, 2].round(3).tolist(),
+                "i": [t[0] for t in tri], "j": [t[1] for t in tri], "k": [t[2] for t in tri],
+                "volume": float(hull.volume), "area": float(hull.area), "steps": len(pos) - 1}
+
+    data = {"src": pack(*out["src"]), "ctrl": pack(*out["ctrl"]), "name": r["source"]}
+    n = data["src"]["steps"]
+    cv_all = _control_volumes(run, out["seq"], r["base"])
+    data["ctrl_vols"] = cv_all
+    data["src_vol"] = data["src"]["volume"] / n ** 1.5
+    rank = sum(v < data["src_vol"] for v in cv_all)
+
+    def row(key, label):
+        m = metrics.get(key)
+        if not m:
+            return ""
+        cls = " class='sig'" if m["p"] is not None and m["p"] < 0.01 else ""
+        return (f"<tr><td>{label}</td><td>{_fmt(m['value'], 4)}</td><td>{_fmt(m['ctrl_mean'], 4)} &plusmn; "
+                f"{_fmt(m['ctrl_sd'], 3)}</td><td{cls}>{(m['z'] or 0):+.2f}</td><td>{_fmt(m['p'])}</td></tr>")
+
+    name = html.escape(r["source"])
+    q = r.get("q_lens")
+    verdict = ("<span class='sig'>differs from random controls after correction</span>"
+               if q is not None and q < 0.05 else "indistinguishable from random controls")
+    group = f" (groups of {k} digits, so there are at least 6 directions)" if k > 1 else ""
+    sv, cv = data["src"]["volume"], data["ctrl"]["volume"]
+    body = f"""<div class="nav"><a href="/run/{run}/walk3d">&larr; back to the walk3d lens page</a></div>
+<h1>A walk through space, and its shell <span class="mut">{name}, base {r['base']}</span></h1>
+<p class="mut">Each digit{group} is one step of length 1 in one of {r['base'] ** k} directions spread evenly over a
+sphere, like a fly that changes course at every digit. {n:,} steps make a tangled path (colour = time: dark at the
+start, bright at the end). The <b>shell</b> is the tightest convex skin around the whole path, like shrink-wrap:
+its volume and surface area measure how much space the walk explores. Left: {name}; right: random digits. Drag to
+rotate, scroll to zoom.</p>
+<div class="card" style="display:flex;gap:14px;flex-wrap:wrap;align-items:center">
+<label><input type="checkbox" id="showShell" checked> show shell</label>
+<label><input type="checkbox" id="showPath" checked> show path</label>
+<label><input type="checkbox" id="sameScale" checked> same scale</label>
+<label><input type="checkbox" id="sync" checked> rotate both together</label>
+<span class="mut">3D model of the shell (STL, opens in Windows 3D Viewer, Blender, slicers for 3D printing):
+<a href="/run/{run}/walk3d/shell.stl">{name}</a> &middot; <a href="/run/{run}/walk3d/shell_control.stl">control</a></span></div>
+<div class="pair">
+<div class="card" style="margin:0;padding:0"><div id="p0" style="height:560px"></div>
+<p style="margin:6px 12px" class="mut">shell volume <b>{sv:,.0f}</b> cubic steps, area {data['src']['area']:,.0f}</p></div>
+<div class="card" style="margin:0;padding:0"><div id="p1" style="height:560px"></div>
+<p style="margin:6px 12px" class="mut">shell volume <b>{cv:,.0f}</b> cubic steps, area {data['ctrl']['area']:,.0f}</p></div>
+</div>
+<h2>Is {name}'s shell unusual?</h2>
+<p class="mut">One random walk is not enough to compare against: the volume of a random walk's shell varies a lot
+from walk to walk. So the judge built the same shell for {r['n_controls']} random digit sequences. Volume is divided
+by steps<sup>1.5</sup>, because a random walk's shell grows like that. Below: the shell volumes of 200 random walks,
+and where {name}'s falls: {rank} of the 200 are smaller ({100 * rank / len(cv_all):.0f}th percentile). Anything
+between roughly the 3rd and 97th percentile is ordinary. Verdict over all measures: {verdict} (q = {_fmt(q)}).</p>
+<div class="card"><div id="dist" style="height:260px"></div></div>
+<div class="card"><table><tr><th>measure</th><th>{name}</th><th>random controls mean &plusmn; sd</th><th>z</th>
+<th>p (two-sided)</th></tr>
+{row('shell_volume_norm', 'shell volume / steps<sup>1.5</sup>')}{row('shell_area_norm', 'shell area / steps')}
+{row('shell_sphericity', 'shell roundness (1 = ball)')}{row('asphericity', 'elongation of the cloud (0 = round)')}
+{row('rg_norm', 'size: radius of gyration / &radic;steps')}{row('end_to_end_norm', 'start-to-end distance / &radic;steps')}
+{row('nu', 'scaling exponent &nu; (random walk 0.5)')}</table></div>
+<script src="{PLOTLY}"></script>
+<script>
+const D = {json.dumps(data)};
+const fg = getComputedStyle(document.body).color;
+const VIR = [[0, '#440154'], [0.25, '#3b528b'], [0.5, '#21918c'], [0.75, '#5ec962'], [1, '#fde725']];
+function traces(W) {{
+  const t = W.x.map((_, i) => i);
+  return [
+    {{type: 'scatter3d', mode: 'lines', x: W.x, y: W.y, z: W.z, hoverinfo: 'skip', name: 'path',
+      visible: document.getElementById('showPath').checked,
+      line: {{color: t, colorscale: VIR, width: 2}}}},
+    {{type: 'mesh3d', x: W.hx, y: W.hy, z: W.hz, i: W.i, j: W.j, k: W.k, name: 'shell', hoverinfo: 'skip',
+      visible: document.getElementById('showShell').checked, opacity: 0.18, color: '#f08a5d',
+      flatshading: true}},
+    {{type: 'scatter3d', mode: 'markers', x: [W.x[0], W.x[W.x.length - 1]], y: [W.y[0], W.y[W.y.length - 1]],
+      z: [W.z[0], W.z[W.z.length - 1]], text: ['start', 'end'], hoverinfo: 'text', name: 'start/end',
+      marker: {{size: 4, color: ['#ffffff', '#fde725']}}}}];
+}}
+let syncing = false;
+function draw() {{
+  const ax = {{visible: false}};
+  // same scale on both sides, so the shells can be compared by eye
+  const ext = W => Math.max(...[...W.hx, ...W.hy, ...W.hz].map(Math.abs)) * 1.05;
+  const same = document.getElementById('sameScale').checked;
+  const Rall = Math.max(ext(D.src), ext(D.ctrl));
+  [['p0', D.src, D.name], ['p1', D.ctrl, 'random control']].forEach(([id, W, title]) => {{
+    const R = same ? Rall : ext(W);
+    const axr = {{visible: false, range: [-R, R]}};
+    Plotly.react(id, traces(W), {{paper_bgcolor: 'rgba(0,0,0,0)', font: {{color: fg}}, showlegend: false,
+      margin: {{l: 0, r: 0, t: 30, b: 0}}, title: {{text: title, font: {{size: 14}}}},
+      scene: {{xaxis: axr, yaxis: axr, zaxis: axr, aspectmode: 'cube',
+               camera: {{eye: {{x: 0.95, y: 0.95, z: 0.55}}}}}}}}, {{responsive: true, displaylogo: false}});
+  }});
+  ['p0', 'p1'].forEach((id, k) => {{
+    const el = document.getElementById(id);
+    el.removeAllListeners && el.removeAllListeners('plotly_relayout');
+    el.on('plotly_relayout', ev => {{
+      if (syncing || !document.getElementById('sync').checked || !ev['scene.camera']) return;
+      syncing = true;
+      Plotly.relayout(k ? 'p0' : 'p1', {{'scene.camera': ev['scene.camera']}}).then(() => syncing = false);
+    }});
+  }});
+}}
+['showShell', 'showPath', 'sameScale'].forEach(id => document.getElementById(id).onchange = draw);
+draw();
+// the source's shell volume among 200 random walks' shell volumes (real histogram)
+Plotly.react('dist', [
+  {{type: 'histogram', x: D.ctrl_vols, nbinsx: 30, name: '200 random walks',
+   marker: {{color: 'rgba(150,150,160,0.6)'}}, hovertemplate: '%{{y}} walks<extra></extra>'}},
+  {{x: [D.src_vol, D.src_vol], y: [0, 1], yaxis: 'y2', mode: 'lines', name: D.name,
+   line: {{color: '#f08a5d', width: 3}}, hoverinfo: 'skip'}}],
+  {{paper_bgcolor: 'rgba(0,0,0,0)', plot_bgcolor: 'rgba(0,0,0,0)', font: {{color: fg}}, bargap: 0.05,
+   margin: {{l: 40, r: 10, t: 10, b: 40}}, yaxis: {{title: {{text: 'walks'}}, gridcolor: 'rgba(128,128,128,0.2)'}},
+   yaxis2: {{overlaying: 'y', range: [0, 1], visible: false}},
+   xaxis: {{title: {{text: 'shell volume / steps^1.5'}}, gridcolor: 'rgba(128,128,128,0.2)'}},
+   legend: {{x: 0.7, y: 0.98}}}}, {{responsive: true, displaylogo: false}});
+</script>"""
+    return page(f"walk3d · {run}", body)
 
 
 @app.get("/img/{run}/{name}")
