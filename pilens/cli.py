@@ -120,6 +120,12 @@ def cmd_novelty(a) -> None:
     run_check(consts, recheck=a.recheck)
 
 
+def cmd_compare(a) -> None:
+    from .compare import run_compare
+
+    run_compare(delta_tol=a.delta_tol)
+
+
 def cmd_export_site(a) -> None:
     from .export import export_site
 
@@ -202,6 +208,10 @@ def main(argv=None) -> None:
     nv.add_argument("--constant", default="all", help="pi | e | comma list | all")
     nv.add_argument("--recheck", action="store_true", help="look up cores already checked again")
     nv.set_defaults(fn=cmd_novelty)
+
+    cp = sub.add_parser("compare", help="compare found π identities with the Ramanujan Machine's published formulas")
+    cp.add_argument("--delta-tol", type=float, default=0.005, help="max difference in δ for a fingerprint match")
+    cp.set_defaults(fn=cmd_compare)
 
     ex = sub.add_parser("export-site", help="save the gallery as a static read-only website (GitHub Pages)")
     ex.add_argument("--out", default="docs")

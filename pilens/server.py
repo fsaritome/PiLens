@@ -226,6 +226,26 @@ def formulas_index():
         cls = "sig" if n["status"] == "not in OEIS" else "mut"
         return f"<span class='{cls}'>{html.escape(n['status'])}</span> {links}"
 
+    from .compare import load_results as load_comparison
+
+    cmp_ = load_comparison()
+
+    def rm_cell(const, core):
+        c = cmp_.get(core) if const == "pi" else None
+        if not c:
+            return "<span class='mut'>&ndash;</span>"
+        if c["exact"]:
+            x = c["exact"]
+            where = "their unifying family (CMF)" if x["kind"] == "cmf" else "a published formula"
+            tip = html.escape(f"{x['limit']}; {x['source']}")
+            return f"<span class='mut' title='{tip}'>same as {where}</span>"
+        strong = [m for m in c["fingerprint"] if m["rate"]]
+        if strong:
+            m = strong[0]
+            tip = html.escape(f"delta {c['delta']:.4f} vs {m['delta']:.4f}; rate {m['rate']}; e.g. {m['limit']}")
+            return f"<span class='mut' title='{tip}'>fingerprint of a known formula</span>"
+        return f"<span class='sig'>{html.escape(c['status'])}</span>"
+
     sections = []
     for const, orbits in by_const.items():
         rows_i = []
@@ -238,11 +258,12 @@ def formulas_index():
                 f"b={html.escape(r['b_str'])})</span></td><td>{len({x['a_str'] + x['b_str'] for x in rs})}</td>"
                 f"<td>{html.escape(r['status'])}</td><td>{html.escape(r['rate'])}</td>"
                 f"<td>{'classical' if any(x['known'] for x in rs) else ''}</td>"
-                f"<td>{oeis_cell(const, orbit)}</td></tr>")
+                f"<td>{oeis_cell(const, orbit)}</td><td>{rm_cell(const, orbit)}</td></tr>")
         name = "&pi;" if const == "pi" else html.escape(const)
         sections.append(f"<h2>Distinct identities with {name}: {len(orbits)}</h2><div class='card'><table>"
                         f"<tr><th>a(n)</th><th>b(n)</th><th>limit</th><th>variants</th><th>status</th>"
-                        f"<th>convergence</th><th></th><th>OEIS</th></tr>{''.join(rows_i)}</table></div>")
+                        f"<th>convergence</th><th></th><th>OEIS</th><th>Ramanujan Machine</th></tr>"
+                        f"{''.join(rows_i)}</table></div>")
     ident_html = "".join(sections)
     rounds = "".join(
         f"<tr><td>{r['round']}</td><td>{html.escape(r['proposer'])}</td><td>{r['score']}</td>"
@@ -260,7 +281,13 @@ The same search against a <b>random constant</b> is the control: it must stay at
 a few terms later (n &rarr; n + k), rescaling (a &rarr; c&middot;a, b &rarr; c&sup2;&middot;b), and polynomial
 "dressing" (a &rarr; c(n)&middot;a, b &rarr; c(n)c(n&minus;1)&middot;b). Each row is one such core; "variants" counts
 the fractions that reduce to it. Rows can still be equivalent through deeper transformations, and "classical" marks only the few formulas in PiLens's own short list,
-so an unmarked row is <i>not</i> a claim of novelty. The OEIS column comes from <code>pilens novelty</code>: it looks up the core's numerator and denominator sequences at oeis.org. "known" means a matching entry mentions the constant; "sequence in OEIS" means the sequence is catalogued but the entry does not mention the constant; "not in OEIS" means neither sequence is catalogued. That makes the identity a candidate, not proof that it is new.</p>
+so an unmarked row is <i>not</i> a claim of novelty. The OEIS column comes from <code>pilens novelty</code>: it looks up the core's numerator and denominator sequences at oeis.org. "known" means a matching entry mentions the constant; "sequence in OEIS" means the sequence is catalogued but the entry does not mention the constant; "not in OEIS" means neither sequence is catalogued. That makes the identity a candidate, not proof that it is new.
+The Ramanujan Machine column comes from <code>pilens compare</code>, against the 149 &pi; formulas the Ramanujan
+Machine group collected from the literature and the 22 representatives of their unifying family
+(<a href="https://github.com/RamanujanMachine/euler2ai">euler2ai</a>, arXiv:2502.17533). "same as" means the
+fraction reduces to one of theirs; "fingerprint of a known formula" means it has the same irrationality measure
+&delta; and convergence speed as a known formula, the signature their paper uses to group equivalent formulas
+(hover for details). Result so far: every identity found here falls into three well-known speed classes.</p>
 {ident_html}
 <h2>Claude rounds</h2><div class="card"><table><tr><th>round</th><th>proposer</th><th>new identities</th>
 <th style="text-align:left">notes</th></tr>{rounds or '<tr><td>none yet: <code>pilens evolve</code></td></tr>'}</table></div>"""

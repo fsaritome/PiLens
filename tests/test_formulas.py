@@ -129,3 +129,16 @@ def test_export_site(tmp_path):
     n = export_site(tmp_path / "site", log=lambda *a: None)
     assert n > 3 and (tmp_path / "site" / "index.html").exists() and (tmp_path / "site" / "formulas" / "index.html").exists()
     assert 'href="/' not in (tmp_path / "site" / "formulas" / "index.html").read_text(encoding="utf-8")
+
+
+def test_compare_dynamics():
+    import math
+
+    from pilens.compare import _ratio_label, dynamics
+
+    # 4/pi = 1 + 1/(3 + 4/(5 + ...)): converges like (3 + 2 sqrt 2)^-2n, so r -> ln(3 + 2 sqrt 2)
+    d = dynamics((1, 2), (0, 0, 1), depth=400)
+    assert abs(d["r"] - math.log(3 + 2 * math.sqrt(2))) < 0.02
+    assert -0.3 < d["delta"] < -0.1
+    assert _ratio_label(0.7, 0.7) == "same rate" and _ratio_label(1.4, 0.7) == "ours = 2× theirs"
+    assert _ratio_label(0.7, 1.76) is None

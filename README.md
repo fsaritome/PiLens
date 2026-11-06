@@ -227,6 +227,7 @@ pilens evolve --rounds 3                             # needs ANTHROPIC_API_KEY (
 pilens evolve --proposals proposals/round1.json      # same loop, proposals from a file
 pilens serve                                         # then open /formulas
 pilens novelty                                       # look found identities up in the OEIS
+pilens compare                                       # vs the Ramanujan Machine's π formulas (see scripts/import_euler2ai.py)
 pilens export-site --out docs                        # static snapshot for GitHub Pages
 ```
 
@@ -239,6 +240,10 @@ Honest scope: the identities found are re-discoveries or close relatives of know
 literature and Ramanujan Machine papers). PiLens does not test equivalence beyond shift
 and scaling, so "not marked classical" never means "new". Results so far are in
 [NOTES.md](NOTES.md).
+
+Checked against the Ramanujan Machine's collection of 149 published π formulas: all 65
+π identities found so far are either the same as a known formula (22) or share the
+convergence fingerprint of one (43). Nothing found here is new.
 
 ## Layout
 

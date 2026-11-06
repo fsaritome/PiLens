@@ -193,7 +193,48 @@ All 74 cores after the $50 run:
 * Next check: compare against the Ramanujan Machine's published π fractions, then write up
   whatever survives for a human expert.
 
+## Comparison with the Ramanujan Machine's π formulas (2026-11-06)
+
+`pilens compare` checks every π core against the Ramanujan Machine group's "euler2ai"
+dataset (Raz et al., *From Euler to AI: Unifying Formulas for Mathematical Constants*,
+arXiv:2502.17533; github.com/RamanujanMachine/euler2ai): canonical forms of **149 π
+formulas harvested from about 455,000 arXiv papers**, plus **22 representatives of their
+conservative matrix field (CMF)**, the single structure that the paper shows unifies most
+of them. Convert it with `scripts/import_euler2ai.py`; the data is not redistributed here.
+
+Two tests per core:
+1. **Same formula**: their fraction reduces to our core under PiLens's equivalences.
+2. **Same fingerprint**: the irrationality measure δ and the convergence rate r at depth
+   2000, which their paper uses to cluster formulas before proving equivalence. PiLens
+   computes both for both sides. It reproduces their stored values for the fast-converging
+   formulas (median |Δδ| 0.0008, r within 2.3 %); for slowly converging ones r differs from
+   their stored numbers, so only our own values are compared.
+
+| result for the 65 π cores | count |
+|---|---|
+| same formula as a published one (14) or a CMF representative (8) | **22** |
+| fingerprint matches a known formula (36 of them match a CMF representative) | **42** |
+| δ matches but rate does not | 1 (slow-converging, weak evidence either way) |
+| no match | **0** |
+
+**Conclusion: no evidence of anything new.** All 65 cores fall into three well-known
+speed classes:
+* **r ≈ ln 2 ≈ 0.69, δ ≈ −0.65** (46 cores): the "z = 1/2" hypergeometric class, which
+  includes the 3n family and almost everything Claude's "lift" families found.
+* **r ≈ ln(3 + 2√2) ≈ 1.76, δ ≈ −0.20** (4 cores): the 4/π (Brouncker/Euler) class.
+* **slow, power-law convergence, δ ≈ −0.99** (15 cores): Euler-type fractions with
+  constant a(n). Here δ is nearly the same for all formulas, so a fingerprint match says little.
+
+The literature also contains π formulas in **other** speed classes (79 of the 149, e.g.
+Ramanujan-type fast series), and PiLens never found any of those. A genuinely new formula
+would most likely show up as a new (δ, r) pair. That needs higher-degree families and a
+search aimed at faster convergence, not more rounds in the current neighbourhood.
+
 ## Next ideas
+
+* Aim the search at a new speed class: families whose convergence rate is not ln 2,
+  ln(3+2√2) or power-law (e.g. degree-3 a(n) with degree-6 b(n), as in Apéry-like formulas),
+  and score Claude on new (δ, r) pairs instead of new cores.
 
 * `pilens novelty` after each evolve run, then compare survivors with the Ramanujan Machine data.
 * Allow a(n) of degree 2 with b(n) of degree 4 over wider ranges, with Mobius ≤ 12; that
