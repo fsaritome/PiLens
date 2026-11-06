@@ -116,6 +116,10 @@ def summary_for_prompt(max_identities: int = 60) -> str:
     return "\n".join(lines)
 
 
+LAST_USAGE: dict = {}
+PRICE_IN, PRICE_OUT = 4.0, 20.0  # USD per million tokens, claude-opus-5-5
+
+
 def propose_api(summary: str) -> Proposal:
     import anthropic
 
@@ -127,6 +131,10 @@ def propose_api(summary: str) -> Proposal:
         messages=[{"role": "user", "content": summary + "\n\nPropose the next 1-3 families."}],
         output_format=Proposal,
     )
+    u = resp.usage
+    LAST_USAGE.clear()
+    LAST_USAGE.update(input_tokens=u.input_tokens, output_tokens=u.output_tokens,
+                      est_cost_usd=round((u.input_tokens * PRICE_IN + u.output_tokens * PRICE_OUT) / 1e6, 4))
     if resp.stop_reason == "refusal" or resp.parsed_output is None:
         raise RuntimeError(f"no proposal (stop_reason={resp.stop_reason})")
     return resp.parsed_output
@@ -148,9 +156,13 @@ def validate(fp: FamilyProposal) -> gcf.Family:
 
 def run_round(proposal: Proposal | None = None, proposer: str = MODEL, log=print) -> dict:
     before = {r["orbit"] for h in list_hunts() for r in h["distinct_relations"]}
+    usage = None
     if proposal is None:
         log(f"asking {MODEL} for proposals...")
         proposal = propose_api(summary_for_prompt())
+        usage = dict(LAST_USAGE)
+        log(f"  tokens: {usage['input_tokens']:,} in, {usage['output_tokens']:,} out "
+            f"(~${usage['est_cost_usd']:.3f})")
     results = []
     for fp in proposal.families[:3]:
         log(f"\n[{fp.name}] {fp.rationale}")
@@ -169,7 +181,7 @@ def run_round(proposal: Proposal | None = None, proposer: str = MODEL, log=print
                         "new_distinct": len(new), "new_orbits": new})
         log(f"  new distinct identities this family: {len(new)}")
     rec = {"round": len(history()) + 1, "proposer": proposer, "ts": time.strftime("%Y-%m-%d %H:%M:%S"),
-           "notes": proposal.notes, "results": results,
+           "notes": proposal.notes, "results": results, "usage": usage,
            "score": sum(r.get("new_distinct", 0) for r in results)}
     with (evolve_dir() / "rounds.jsonl").open("a", encoding="utf-8") as f:
         f.write(json.dumps(rec, ensure_ascii=False) + "\n")

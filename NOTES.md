@@ -92,8 +92,8 @@ control.
 
 | | |
 |---|---|
-| continued fractions scanned (π) | 1,479,498 |
-| distinct identities with π (up to shift and scaling) | **21** (19 verified to ~175 digits, 2 probable at 13–16 digits) |
+| continued fractions scanned (π) | 3,067,769 (1,479,498 in rounds 0–4) |
+| distinct identities with π (up to shift and scaling) | **45**: 21 by round 4 (19 verified to ~175 digits, 2 probable at 13–16 digits), +24 in the API rounds 5–7 (all verified) |
 | matches against the random constant | 2 raw coincidences, **0 confirmed** |
 | same "linear b" family against e (contrast) | 0 identities with π, **9 distinct with e** (50 fractions) |
 
@@ -110,6 +110,21 @@ asks `claude-opus-5-5` the same question through the API.
 | 2 | each known pattern with much wider lower-order coefficients | 0 |
 | 3 | the same patterns with a larger target table (\|coef\| ≤ 12) | **8** |
 | 4 | the 3n pattern even wider; linear b; a1 = 1 | 0 |
+| 5 | *(Claude via API)* other integer-root pairs of x² − a1·x − b2: (1,3), (2,3), (1,4) | 0 |
+| 6 | *(API)* keep root ratio 2 and −1; half-integer shifts (6n \| −8n²); degree-lifted quadratic/quartic versions | **23** |
+| 7 | *(API)* half-integer trick for the 4/π family; both tricks combined; b(0) ≠ 0 | 1 |
+
+Rounds 5–7 ran through `pilens evolve --rounds 3` with `claude-opus-5-5`. Claude's own
+reasoning is in `data/evolve/rounds.jsonl`. Its key step was a hypothesis that it tested
+and rejected: in round 5 it guessed that fast π identities need integer roots of
+x² − a1·x − b2, and three root pairs gave zero hits. In round 6 it narrowed this down to
+the *root ratio* (2, i.e. hypergeometric argument 1/2, the 3n family, and −1, the
+arctan(1) / 4/π family), and searching those regimes one degree up found 23 new ones.
+
+Caveat on the 24 from rounds 6–7: these quadratic/quartic fractions mostly factor, e.g.
+a = (2n+1)(n+1), b = n³(n+1). That is the shape an equivalence transform with c_n = n + k
+produces from the linear families, so they are very likely the known families in a new
+form, not new mathematics. PiLens doesn't detect that equivalence yet (see Next ideas).
 
 What the loop learned:
 * Identities come in a few parametric families. The dominant one is

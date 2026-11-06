@@ -203,7 +203,7 @@ the Ramanujan Machine's idea at a small scale.
    stalls and is rejected.
 4. **Control:** the same search is run against a seeded *random* constant. No polynomial
    continued fraction should be an exact expression in a random number, so any confirmed
-   hit there would mean the judge is broken. Over 1.5 million fractions it found 2 raw
+   hit there would mean the judge is broken. Over 3 million fractions it found 2 raw
    coincidences and confirmed 0.
 5. Results are grouped up to two trivial changes: starting the same fraction a few terms
    later, and rescaling (a → c·a, b → c²·b).
