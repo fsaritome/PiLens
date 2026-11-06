@@ -146,22 +146,47 @@ What the loop learned:
 (classical continued fractions and the Ramanujan Machine papers). PiLens only removes
 shift and scaling duplicates and has no database of known formulas beyond three classics.
 
+## The "$50" evolve run (rounds 8–113, 2026-11-06)
+
+`pilens evolve --budget 50`, with Claude (`claude-opus-5-5`, effort high) proposing 1–3
+families per round and the score counting new *cores* (identities left after removing
+shifts, scalings and polynomial equivalence transforms).
+
+| | |
+|---|---|
+| API rounds | 106 (8 failed: the answer hit the length limit before it was complete) |
+| estimated spend | **$27.76** recorded, plus up to ~$1.50 for two calls interrupted when the run was stopped |
+| new π cores | **43** (37 in the first 47 rounds, only 6 in the last 58) |
+| hits on the random control | **0** |
+| all hunts so far | 297 hunts, 85.5 million continued fractions, **65 π cores**, 0 confirmed control hits |
+
+* Stopped by hand at ~$28 of the $50: returns had fallen to about $3 per new core, and 53
+  of the last 58 rounds found nothing. The neighbourhood Claude was searching looks
+  exhausted for this kind of search.
+* After round 47 the API call was changed to streaming with `max_tokens` 32000 (from 16000).
+  Failed rounds dropped from ~15 % to ~5 %.
+* Almost all new cores come from Claude's "z = 1/2 lift" families: quadratic a(n) with
+  quartic b(n) = −n²(2n² + p·n + q) and similar. In the 3D view of the biggest such hunt
+  (`/formulas/pi_fedd4350/3d`), its 25 hits lie on one nearly straight line in
+  coefficient space, so they are almost certainly one parametric family, not 25
+  independent identities.
+
 ## Novelty check against the OEIS (2026-11-06)
 
 `pilens novelty` looks up each core's convergent numerators and denominators at oeis.org
 (simplest form of the core, leading 0/±1 dropped, common factor removed, 10 terms).
-First run, 66 cores found by then (mid-way through the $50 evolve run):
+All 74 cores after the $50 run:
 
 | constant | cores | known (entry mentions the constant) | sequence catalogued only | not in OEIS |
 |---|---|---|---|---|
 | e  | 9 | 9 | 0 | 0 |
-| π  | 57 | 6 | 6 | 45 |
+| π  | 65 | 6 | 6 | 53 |
 
 * Sanity check passes: every e identity, and the classical 4/π and Brouncker fractions,
   are recognised. So the lookup does catch known material.
 * "Not in OEIS" is weak evidence for π. Convergent sequences are often not catalogued
   even for known fractions (Euler's π + 3 only matches a sequence that does not mention π).
-  Many of the 45 share a pattern (a(n) = 3n + k with b(n) = −n(2n−1)-like factors, or
+  Many of the 53 share a pattern (a(n) = 3n + k with b(n) = −n(2n−1)-like factors, or
   constant a(n) with b(n) = (2n−1)(2n+1)-like), so they are probably related to each other,
   and to known families, by transformations PiLens does not remove yet (general Mobius /
   "conservative matrix field" equivalences from the Ramanujan Machine papers).

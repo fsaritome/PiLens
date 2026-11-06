@@ -1,0 +1,46 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1"><title>pi_c0185029 · formula hunt</title>
+<style>
+:root{--bg:#fbfaf7;--fg:#1d1d1f;--mut:#6b6b70;--card:#fff;--line:#e4e2dc;--acc:#b4441c;--good:#2f7d32;--bad:#b3261e}
+@media (prefers-color-scheme:dark){:root{--bg:#141416;--fg:#ececec;--mut:#9a9aa0;--card:#1d1d20;--line:#2d2d31;--acc:#f08a5d;--good:#7bc47f;--bad:#f2867e}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.5 system-ui,-apple-system,Segoe UI,sans-serif}
+main{max-width:1180px;margin:0 auto;padding:20px 16px 60px}a{color:var(--acc);text-decoration:none}a:hover{text-decoration:underline}
+h1{font-size:22px;margin:0 0 4px}h2{font-size:17px;margin:28px 0 8px}.mut{color:var(--mut)}
+table{border-collapse:collapse;width:100%;font-variant-numeric:tabular-nums}th,td{padding:5px 8px;border-bottom:1px solid var(--line);text-align:right}
+th:first-child,td:first-child{text-align:left}th{font-weight:600;color:var(--mut);font-size:13px}
+.sig{color:var(--acc);font-weight:600}.pair{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:14px 0}
+@media (max-width:700px){.pair{grid-template-columns:1fr}}
+figure{margin:0;background:var(--card);border:1px solid var(--line);border-radius:10px;padding:10px}
+figure img{width:100%;image-rendering:pixelated;border-radius:4px;display:block}figcaption{font-size:13px;color:var(--mut);margin-top:6px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:12px 14px;margin:12px 0;overflow-x:auto}
+.rate{display:flex;gap:10px;align-items:center;flex-wrap:wrap}button{font:inherit;padding:7px 14px;border-radius:8px;border:1px solid var(--line);background:var(--card);color:var(--fg);cursor:pointer}
+button.up:hover{border-color:var(--good)}button.down:hover{border-color:var(--bad)}input[type=text]{font:inherit;padding:7px 10px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--fg);min-width:220px;flex:1}
+.nav{display:flex;justify-content:space-between;gap:10px;margin-top:6px}.thumbs{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
+.thumbs a{display:block;background:var(--card);border:1px solid var(--line);border-radius:8px;padding:6px;font-size:13px;color:var(--fg)}.thumbs img{width:100%;aspect-ratio:1;object-fit:contain;image-rendering:pixelated}
+code{font-size:13px}
+#rate,button[onclick^='rateF']{display:none!important}.snapshot{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:6px 10px;font-size:13px;color:var(--mut);margin-bottom:10px}</style></head><body><main><div class='snapshot'>Read-only snapshot of the PiLens gallery, exported 2026-11-06 14:04. Code and how to run it yourself: <a href='https://github.com/fsaritome/PiLens'>github.com/fsaritome/PiLens</a>.</div><div class="nav"><a href="../index.html">&larr; all hunts</a></div>
+<h1>(6,-8) b3=-20, high-b1 full b2 sweep</h1>
+<p class="mut">a ranges [[-6, 10], [11, 19], [6, 6]], b ranges [[0, 0], [14, 30], [-30, 30], [-20, -20], [-8, -8]] (constant term first) &middot;
+158,661 fractions &middot; 156,060 converged to 7+ digits at depth 2000 &middot;
+4.6s. <a href="3d/index.html"><b>&rarr; view in 3D</b></a></p>
+<div class="pair">
+<figure><img src="../../hunt-img/pi_c0185029/landscape_target.png" alt="landscape vs pi"><figcaption>vs &pi;: 0 matches,
+0 verified, 0 probable. x = constant term of a(n), y (up) =
+coefficient of n^2 in b(n). Blue brightness = how well fractions converge there,
+gold = an identity was found.</figcaption></figure>
+<figure><img src="../../hunt-img/pi_c0185029/landscape_null.png" alt="landscape vs random constant"><figcaption>vs a random
+constant (control): 0 matches, 0 verified, 0 probable.</figcaption></figure>
+</div>
+<h2>Identities with &pi; (0 distinct, 0 checked)</h2>
+<div class="card"><table><tr><th>a(n)</th><th>b(n)</th><th>limit</th><th>status</th><th>digits</th><th>convergence</th>
+<th style="text-align:left">first terms</th><th>rate it</th></tr></table></div>
+<h2>Control matches (random constant)</h2>
+<div class="card"><table><tr><th>a(n)</th><th>b(n)</th><th>limit</th><th>status</th><th>digits</th><th>convergence</th>
+<th style="text-align:left">first terms</th><th></th></tr><tr><td>none</td></tr></table></div>
+<script>
+async function rateF(btn,key,v){
+  const r=await fetch('/api/rate-formula',{method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({run:"pi_c0185029",key:key,rating:v})});
+  const j=await r.json(); btn.parentElement.querySelector('span').textContent=j.up+'/'+j.down;
+}
+</script></main></body></html>
