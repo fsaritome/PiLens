@@ -118,6 +118,7 @@ def lens_page(run: str, key: str):
 <div class="nav"><a href="/">&larr; all runs</a><span><a href="/run/{run}/{prev_k}">&lsaquo; {html.escape(prev_k)}</a> &nbsp;
 <a href="/run/{run}/{next_k}">{html.escape(next_k)} &rsaquo;</a></span></div>
 <h1>{html.escape(key)} <span class="mut">on {html.escape(r['source'])}, base {r['base']}, n = {r['n']:,}</span></h1>
+{f'<p><a href="/run/{run}/chord/3d"><b>&rarr; view the chords in 3D</b></a></p>' if key == 'chord' else ''}
 <p class="mut">Verdict: {verdict}. p_maxT = {_fmt(r['p_maxT'])}; {clf}; p_lens = {_fmt(r['p_lens'])};
 q (BH over {len(keys)} lens(es) in this run) = {_fmt(q)}; {r['n_controls']} controls.</p>
 <div class="pair">
@@ -145,6 +146,115 @@ async function rate(v){{
 }}
 </script>"""
     return page(f"{key} · {run}", body)
+
+
+@app.get("/run/{run}/chord/3d", response_class=HTMLResponse)
+def chord_3d(run: str):
+    """The chord lens stacked in time: each chord is lifted to its position in the
+    sequence, so order (not just counts) becomes visible. Source next to a control."""
+    import re
+
+    from .sources import get_source, make_control
+
+    f = (store.runs_dir() / run / "chord.json").resolve()
+    if not f.is_relative_to(store.runs_dir().resolve()) or not f.exists():
+        raise HTTPException(404)
+    r = json.loads(f.read_text())
+    src, strength, seed = r["source"], 0.03, 12345
+    m = re.match(r"^(planted_[a-z]+)_([0-9.]+)$", src)
+    if m:
+        src, strength = m.group(1), float(m.group(2))
+    m = re.match(r"^random_s(\d+)$", src)
+    if m:
+        src, seed = "random", int(m.group(1))
+    try:
+        seq = get_source(src, r["base"], r["n"], seed=seed, strength=strength)
+    except ValueError:
+        raise HTTPException(404)
+    ctrl = make_control(seq, 1)
+    k = 2001
+    data = {"base": int(r["base"]), "src": [int(v) for v in seq.symbols[:k]],
+            "ctrl": [int(v) for v in ctrl[:k]], "name": r["source"]}
+    name = html.escape(r["source"])
+    body = f"""<div class="nav"><a href="/run/{run}/chord">&larr; back to the flat chord diagram</a></div>
+<h1>Chords in 3D <span class="mut">{name}, base {r['base']}</span></h1>
+<p class="mut">Same picture as the flat chord diagram: the {r['base']} symbols sit around a ring, and each pair of
+consecutive symbols is joined by a curve through the middle. Here every chord is also <b>lifted to its position in
+the sequence</b>: the first chord is at the bottom, later ones higher up, so the order becomes visible. Colour =
+the symbol the chord starts from. Left: {name}; right: random digits (the control). If {name} hid a pattern in
+time, the left tube would show bands, twists or gaps that the right one lacks. Drag to rotate, scroll to zoom.</p>
+<div class="card" style="display:flex;gap:14px;flex-wrap:wrap;align-items:center">
+<label>chords <select id="nch"><option>100</option><option>300</option><option selected>600</option>
+<option>1000</option><option>2000</option></select></label>
+<label>height per chord <select id="hz"><option value="1" selected>1</option><option value="0.2">squashed</option>
+<option value="3">stretched</option></select></label>
+<label><input type="checkbox" id="sync" checked> rotate both together</label></div>
+<div class="pair">
+<div id="p0" class="card" style="height:600px;padding:0;overflow:hidden;margin:0"></div>
+<div id="p1" class="card" style="height:600px;padding:0;overflow:hidden;margin:0"></div>
+</div>
+<script src="{PLOTLY}"></script>
+<script>
+const D = {json.dumps(data)};
+const S = 18;  // points per chord
+// one distinct colour per symbol (stepped colourscale)
+const palette = B => {{
+  const out = [];
+  for (let d = 0; d < B; d++) {{
+    const c = `hsl(${{Math.round(360 * d / B)}}, 75%, 58%)`;
+    out.push([d / B, c], [(d + 1) / B, c]);
+  }}
+  return out;
+}};
+function traces(x, n, hz) {{
+  const B = D.base, X = [], Y = [], Z = [], C = [];
+  for (let i = 0; i < n; i++) {{
+    const t0 = 2 * Math.PI * (x[i] + 0.08 + 0.84 * i / n) / B;
+    const t1 = 2 * Math.PI * (x[i + 1] + 0.08 + 0.84 * (i + 1) / n) / B;
+    const ax = Math.cos(t0), ay = Math.sin(t0), bx = Math.cos(t1), by = Math.sin(t1);
+    for (let s = 0; s <= S; s++) {{
+      const t = s / S, u = 1 - t;
+      X.push(u * u * ax + t * t * bx); Y.push(u * u * ay + t * t * by); Z.push((i + t) * hz); C.push(x[i]);
+    }}
+    X.push(null); Y.push(null); Z.push(null); C.push(x[i]);
+  }}
+  const lab = [...Array(B).keys()];
+  return [{{type: 'scatter3d', mode: 'lines', x: X, y: Y, z: Z, hoverinfo: 'skip',
+            line: {{color: C, colorscale: palette(B), cmin: -0.5, cmax: B - 0.5, width: 2}}}},
+          {{type: 'scatter3d', mode: 'text', hoverinfo: 'skip',
+            x: lab.map(d => 1.15 * Math.cos(2 * Math.PI * (d + 0.5) / B)),
+            y: lab.map(d => 1.15 * Math.sin(2 * Math.PI * (d + 0.5) / B)),
+            z: lab.map(() => 0), text: lab.map(String),
+            textfont: {{size: 14, color: lab.map(d => palette(B)[2 * d][1])}}}}];
+}}
+let syncing = false;
+function draw() {{
+  const n = Math.min(+document.getElementById('nch').value, D.src.length - 1);
+  const hz = +document.getElementById('hz').value;
+  const fg = getComputedStyle(document.body).color;
+  const ax = {{visible: false}};
+  [[D.src, 'p0', D.name], [D.ctrl, 'p1', 'random control']].forEach(([x, id, title]) => {{
+    Plotly.react(id, traces(x, n, hz), {{
+      paper_bgcolor: 'rgba(0,0,0,0)', font: {{color: fg}}, showlegend: false,
+      margin: {{l: 0, r: 0, t: 30, b: 0}}, title: {{text: title, font: {{size: 14}}}},
+      scene: {{xaxis: ax, yaxis: ax, zaxis: ax, aspectmode: 'manual', aspectratio: {{x: 1, y: 1, z: 1.6}},
+               camera: {{eye: {{x: 1.6, y: 1.6, z: 0.9}}}}}},
+    }}, {{responsive: true, displaylogo: false}});
+  }});
+  ['p0', 'p1'].forEach((id, k) => {{
+    const el = document.getElementById(id);
+    el.removeAllListeners && el.removeAllListeners('plotly_relayout');
+    el.on('plotly_relayout', ev => {{
+      if (syncing || !document.getElementById('sync').checked || !ev['scene.camera']) return;
+      syncing = true;
+      Plotly.relayout(k ? 'p0' : 'p1', {{'scene.camera': ev['scene.camera']}}).then(() => syncing = false);
+    }});
+  }});
+}}
+['nch', 'hz'].forEach(id => document.getElementById(id).onchange = draw);
+draw();
+</script>"""
+    return page(f"chord 3D · {run}", body)
 
 
 @app.get("/img/{run}/{name}")

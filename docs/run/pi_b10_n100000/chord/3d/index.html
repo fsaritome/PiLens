@@ -1,0 +1,98 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1"><title>chord 3D · pi_b10_n100000</title>
+<style>
+:root{--bg:#fbfaf7;--fg:#1d1d1f;--mut:#6b6b70;--card:#fff;--line:#e4e2dc;--acc:#b4441c;--good:#2f7d32;--bad:#b3261e}
+@media (prefers-color-scheme:dark){:root{--bg:#141416;--fg:#ececec;--mut:#9a9aa0;--card:#1d1d20;--line:#2d2d31;--acc:#f08a5d;--good:#7bc47f;--bad:#f2867e}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.5 system-ui,-apple-system,Segoe UI,sans-serif}
+main{max-width:1180px;margin:0 auto;padding:20px 16px 60px}a{color:var(--acc);text-decoration:none}a:hover{text-decoration:underline}
+h1{font-size:22px;margin:0 0 4px}h2{font-size:17px;margin:28px 0 8px}.mut{color:var(--mut)}
+table{border-collapse:collapse;width:100%;font-variant-numeric:tabular-nums}th,td{padding:5px 8px;border-bottom:1px solid var(--line);text-align:right}
+th:first-child,td:first-child{text-align:left}th{font-weight:600;color:var(--mut);font-size:13px}
+.sig{color:var(--acc);font-weight:600}.pair{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:14px 0}
+@media (max-width:700px){.pair{grid-template-columns:1fr}}
+figure{margin:0;background:var(--card);border:1px solid var(--line);border-radius:10px;padding:10px}
+figure img{width:100%;image-rendering:pixelated;border-radius:4px;display:block}figcaption{font-size:13px;color:var(--mut);margin-top:6px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:12px 14px;margin:12px 0;overflow-x:auto}
+.rate{display:flex;gap:10px;align-items:center;flex-wrap:wrap}button{font:inherit;padding:7px 14px;border-radius:8px;border:1px solid var(--line);background:var(--card);color:var(--fg);cursor:pointer}
+button.up:hover{border-color:var(--good)}button.down:hover{border-color:var(--bad)}input[type=text]{font:inherit;padding:7px 10px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--fg);min-width:220px;flex:1}
+.nav{display:flex;justify-content:space-between;gap:10px;margin-top:6px}.thumbs{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
+.thumbs a{display:block;background:var(--card);border:1px solid var(--line);border-radius:8px;padding:6px;font-size:13px;color:var(--fg)}.thumbs img{width:100%;aspect-ratio:1;object-fit:contain;image-rendering:pixelated}
+code{font-size:13px}
+#rate,button[onclick^='rateF']{display:none!important}.snapshot{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:6px 10px;font-size:13px;color:var(--mut);margin-bottom:10px}</style></head><body><main><div class='snapshot'>Read-only snapshot of the PiLens gallery, exported 2026-11-06 16:07. Code and how to run it yourself: <a href='https://github.com/fsaritome/PiLens'>github.com/fsaritome/PiLens</a>.</div><div class="nav"><a href="../index.html">&larr; back to the flat chord diagram</a></div>
+<h1>Chords in 3D <span class="mut">pi, base 10</span></h1>
+<p class="mut">Same picture as the flat chord diagram: the 10 symbols sit around a ring, and each pair of
+consecutive symbols is joined by a curve through the middle. Here every chord is also <b>lifted to its position in
+the sequence</b>: the first chord is at the bottom, later ones higher up, so the order becomes visible. Colour =
+the symbol the chord starts from. Left: pi; right: random digits (the control). If pi hid a pattern in
+time, the left tube would show bands, twists or gaps that the right one lacks. Drag to rotate, scroll to zoom.</p>
+<div class="card" style="display:flex;gap:14px;flex-wrap:wrap;align-items:center">
+<label>chords <select id="nch"><option>100</option><option>300</option><option selected>600</option>
+<option>1000</option><option>2000</option></select></label>
+<label>height per chord <select id="hz"><option value="1" selected>1</option><option value="0.2">squashed</option>
+<option value="3">stretched</option></select></label>
+<label><input type="checkbox" id="sync" checked> rotate both together</label></div>
+<div class="pair">
+<div id="p0" class="card" style="height:600px;padding:0;overflow:hidden;margin:0"></div>
+<div id="p1" class="card" style="height:600px;padding:0;overflow:hidden;margin:0"></div>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/plotly.js-dist-min@2.35.2/plotly.min.js"></script>
+<script>
+const D = {"base": 10, "src": [1, 4, 1, 5, 9, 2, 6, 5, 3, 5, 8, 9, 7, 9, 3, 2, 3, 8, 4, 6, 2, 6, 4, 3, 3, 8, 3, 2, 7, 9, 5, 0, 2, 8, 8, 4, 1, 9, 7, 1, 6, 9, 3, 9, 9, 3, 7, 5, 1, 0, 5, 8, 2, 0, 9, 7, 4, 9, 4, 4, 5, 9, 2, 3, 0, 7, 8, 1, 6, 4, 0, 6, 2, 8, 6, 2, 0, 8, 9, 9, 8, 6, 2, 8, 0, 3, 4, 8, 2, 5, 3, 4, 2, 1, 1, 7, 0, 6, 7, 9, 8, 2, 1, 4, 8, 0, 8, 6, 5, 1, 3, 2, 8, 2, 3, 0, 6, 6, 4, 7, 0, 9, 3, 8, 4, 4, 6, 0, 9, 5, 5, 0, 5, 8, 2, 2, 3, 1, 7, 2, 5, 3, 5, 9, 4, 0, 8, 1, 2, 8, 4, 8, 1, 1, 1, 7, 4, 5, 0, 2, 8, 4, 1, 0, 2, 7, 0, 1, 9, 3, 8, 5, 2, 1, 1, 0, 5, 5, 5, 9, 6, 4, 4, 6, 2, 2, 9, 4, 8, 9, 5, 4, 9, 3, 0, 3, 8, 1, 9, 6, 4, 4, 2, 8, 8, 1, 0, 9, 7, 5, 6, 6, 5, 9, 3, 3, 4, 4, 6, 1, 2, 8, 4, 7, 5, 6, 4, 8, 2, 3, 3, 7, 8, 6, 7, 8, 3, 1, 6, 5, 2, 7, 1, 2, 0, 1, 9, 0, 9, 1, 4, 5, 6, 4, 8, 5, 6, 6, 9, 2, 3, 4, 6, 0, 3, 4, 8, 6, 1, 0, 4, 5, 4, 3, 2, 6, 6, 4, 8, 2, 1, 3, 3, 9, 3, 6, 0, 7, 2, 6, 0, 2, 4, 9, 1, 4, 1, 2, 7, 3, 7, 2, 4, 5, 8, 7, 0, 0, 6, 6, 0, 6, 3, 1, 5, 5, 8, 8, 1, 7, 4, 8, 8, 1, 5, 2, 0, 9, 2, 0, 9, 6, 2, 8, 2, 9, 2, 5, 4, 0, 9, 1, 7, 1, 5, 3, 6, 4, 3, 6, 7, 8, 9, 2, 5, 9, 0, 3, 6, 0, 0, 1, 1, 3, 3, 0, 5, 3, 0, 5, 4, 8, 8, 2, 0, 4, 6, 6, 5, 2, 1, 3, 8, 4, 1, 4, 6, 9, 5, 1, 9, 4, 1, 5, 1, 1, 6, 0, 9, 4, 3, 3, 0, 5, 7, 2, 7, 0, 3, 6, 5, 7, 5, 9, 5, 9, 1, 9, 5, 3, 0, 9, 2, 1, 8, 6, 1, 1, 7, 3, 8, 1, 9, 3, 2, 6, 1, 1, 7, 9, 3, 1, 0, 5, 1, 1, 8, 5, 4, 8, 0, 7, 4, 4, 6, 2, 3, 7, 9, 9, 6, 2, 7, 4, 9, 5, 6, 7, 3, 5, 1, 8, 8, 5, 7, 5, 2, 7, 2, 4, 8, 9, 1, 2, 2, 7, 9, 3, 8, 1, 8, 3, 0, 1, 1, 9, 4, 9, 1, 2, 9, 8, 3, 3, 6, 7, 3, 3, 6, 2, 4, 4, 0, 6, 5, 6, 6, 4, 3, 0, 8, 6, 0, 2, 1, 3, 9, 4, 9, 4, 6, 3, 9, 5, 2, 2, 4, 7, 3, 7, 1, 9, 0, 7, 0, 2, 1, 7, 9, 8, 6, 0, 9, 4, 3, 7, 0, 2, 7, 7, 0, 5, 3, 9, 2, 1, 7, 1, 7, 6, 2, 9, 3, 1, 7, 6, 7, 5, 2, 3, 8, 4, 6, 7, 4, 8, 1, 8, 4, 6, 7, 6, 6, 9, 4, 0, 5, 1, 3, 2, 0, 0, 0, 5, 6, 8, 1, 2, 7, 1, 4, 5, 2, 6, 3, 5, 6, 0, 8, 2, 7, 7, 8, 5, 7, 7, 1, 3, 4, 2, 7, 5, 7, 7, 8, 9, 6, 0, 9, 1, 7, 3, 6, 3, 7, 1, 7, 8, 7, 2, 1, 4, 6, 8, 4, 4, 0, 9, 0, 1, 2, 2, 4, 9, 5, 3, 4, 3, 0, 1, 4, 6, 5, 4, 9, 5, 8, 5, 3, 7, 1, 0, 5, 0, 7, 9, 2, 2, 7, 9, 6, 8, 9, 2, 5, 8, 9, 2, 3, 5, 4, 2, 0, 1, 9, 9, 5, 6, 1, 1, 2, 1, 2, 9, 0, 2, 1, 9, 6, 0, 8, 6, 4, 0, 3, 4, 4, 1, 8, 1, 5, 9, 8, 1, 3, 6, 2, 9, 7, 7, 4, 7, 7, 1, 3, 0, 9, 9, 6, 0, 5, 1, 8, 7, 0, 7, 2, 1, 1, 3, 4, 9, 9, 9, 9, 9, 9, 8, 3, 7, 2, 9, 7, 8, 0, 4, 9, 9, 5, 1, 0, 5, 9, 7, 3, 1, 7, 3, 2, 8, 1, 6, 0, 9, 6, 3, 1, 8, 5, 9, 5, 0, 2, 4, 4, 5, 9, 4, 5, 5, 3, 4, 6, 9, 0, 8, 3, 0, 2, 6, 4, 2, 5, 2, 2, 3, 0, 8, 2, 5, 3, 3, 4, 4, 6, 8, 5, 0, 3, 5, 2, 6, 1, 9, 3, 1, 1, 8, 8, 1, 7, 1, 0, 1, 0, 0, 0, 3, 1, 3, 7, 8, 3, 8, 7, 5, 2, 8, 8, 6, 5, 8, 7, 5, 3, 3, 2, 0, 8, 3, 8, 1, 4, 2, 0, 6, 1, 7, 1, 7, 7, 6, 6, 9, 1, 4, 7, 3, 0, 3, 5, 9, 8, 2, 5, 3, 4, 9, 0, 4, 2, 8, 7, 5, 5, 4, 6, 8, 7, 3, 1, 1, 5, 9, 5, 6, 2, 8, 6, 3, 8, 8, 2, 3, 5, 3, 7, 8, 7, 5, 9, 3, 7, 5, 1, 9, 5, 7, 7, 8, 1, 8, 5, 7, 7, 8, 0, 5, 3, 2, 1, 7, 1, 2, 2, 6, 8, 0, 6, 6, 1, 3, 0, 0, 1, 9, 2, 7, 8, 7, 6, 6, 1, 1, 1, 9, 5, 9, 0, 9, 2, 1, 6, 4, 2, 0, 1, 9, 8, 9, 3, 8, 0, 9, 5, 2, 5, 7, 2, 0, 1, 0, 6, 5, 4, 8, 5, 8, 6, 3, 2, 7, 8, 8, 6, 5, 9, 3, 6, 1, 5, 3, 3, 8, 1, 8, 2, 7, 9, 6, 8, 2, 3, 0, 3, 0, 1, 9, 5, 2, 0, 3, 5, 3, 0, 1, 8, 5, 2, 9, 6, 8, 9, 9, 5, 7, 7, 3, 6, 2, 2, 5, 9, 9, 4, 1, 3, 8, 9, 1, 2, 4, 9, 7, 2, 1, 7, 7, 5, 2, 8, 3, 4, 7, 9, 1, 3, 1, 5, 1, 5, 5, 7, 4, 8, 5, 7, 2, 4, 2, 4, 5, 4, 1, 5, 0, 6, 9, 5, 9, 5, 0, 8, 2, 9, 5, 3, 3, 1, 1, 6, 8, 6, 1, 7, 2, 7, 8, 5, 5, 8, 8, 9, 0, 7, 5, 0, 9, 8, 3, 8, 1, 7, 5, 4, 6, 3, 7, 4, 6, 4, 9, 3, 9, 3, 1, 9, 2, 5, 5, 0, 6, 0, 4, 0, 0, 9, 2, 7, 7, 0, 1, 6, 7, 1, 1, 3, 9, 0, 0, 9, 8, 4, 8, 8, 2, 4, 0, 1, 2, 8, 5, 8, 3, 6, 1, 6, 0, 3, 5, 6, 3, 7, 0, 7, 6, 6, 0, 1, 0, 4, 7, 1, 0, 1, 8, 1, 9, 4, 2, 9, 5, 5, 5, 9, 6, 1, 9, 8, 9, 4, 6, 7, 6, 7, 8, 3, 7, 4, 4, 9, 4, 4, 8, 2, 5, 5, 3, 7, 9, 7, 7, 4, 7, 2, 6, 8, 4, 7, 1, 0, 4, 0, 4, 7, 5, 3, 4, 6, 4, 6, 2, 0, 8, 0, 4, 6, 6, 8, 4, 2, 5, 9, 0, 6, 9, 4, 9, 1, 2, 9, 3, 3, 1, 3, 6, 7, 7, 0, 2, 8, 9, 8, 9, 1, 5, 2, 1, 0, 4, 7, 5, 2, 1, 6, 2, 0, 5, 6, 9, 6, 6, 0, 2, 4, 0, 5, 8, 0, 3, 8, 1, 5, 0, 1, 9, 3, 5, 1, 1, 2, 5, 3, 3, 8, 2, 4, 3, 0, 0, 3, 5, 5, 8, 7, 6, 4, 0, 2, 4, 7, 4, 9, 6, 4, 7, 3, 2, 6, 3, 9, 1, 4, 1, 9, 9, 2, 7, 2, 6, 0, 4, 2, 6, 9, 9, 2, 2, 7, 9, 6, 7, 8, 2, 3, 5, 4, 7, 8, 1, 6, 3, 6, 0, 0, 9, 3, 4, 1, 7, 2, 1, 6, 4, 1, 2, 1, 9, 9, 2, 4, 5, 8, 6, 3, 1, 5, 0, 3, 0, 2, 8, 6, 1, 8, 2, 9, 7, 4, 5, 5, 5, 7, 0, 6, 7, 4, 9, 8, 3, 8, 5, 0, 5, 4, 9, 4, 5, 8, 8, 5, 8, 6, 9, 2, 6, 9, 9, 5, 6, 9, 0, 9, 2, 7, 2, 1, 0, 7, 9, 7, 5, 0, 9, 3, 0, 2, 9, 5, 5, 3, 2, 1, 1, 6, 5, 3, 4, 4, 9, 8, 7, 2, 0, 2, 7, 5, 5, 9, 6, 0, 2, 3, 6, 4, 8, 0, 6, 6, 5, 4, 9, 9, 1, 1, 9, 8, 8, 1, 8, 3, 4, 7, 9, 7, 7, 5, 3, 5, 6, 6, 3, 6, 9, 8, 0, 7, 4, 2, 6, 5, 4, 2, 5, 2, 7, 8, 6, 2, 5, 5, 1, 8, 1, 8, 4, 1, 7, 5, 7, 4, 6, 7, 2, 8, 9, 0, 9, 7, 7, 7, 7, 2, 7, 9, 3, 8, 0, 0, 0, 8, 1, 6, 4, 7, 0, 6, 0, 0, 1, 6, 1, 4, 5, 2, 4, 9, 1, 9, 2, 1, 7, 3, 2, 1, 7, 2, 1, 4, 7, 7, 2, 3, 5, 0, 1, 4, 1, 4, 4, 1, 9, 7, 3, 5, 6, 8, 5, 4, 8, 1, 6, 1, 3, 6, 1, 1, 5, 7, 3, 5, 2, 5, 5, 2, 1, 3, 3, 4, 7, 5, 7, 4, 1, 8, 4, 9, 4, 6, 8, 4, 3, 8, 5, 2, 3, 3, 2, 3, 9, 0, 7, 3, 9, 4, 1, 4, 3, 3, 3, 4, 5, 4, 7, 7, 6, 2, 4, 1, 6, 8, 6, 2, 5, 1, 8, 9, 8, 3, 5, 6, 9, 4, 8, 5, 5, 6, 2, 0, 9, 9, 2, 1, 9, 2, 2, 2, 1, 8, 4, 2, 7, 2, 5, 5, 0, 2, 5, 4, 2, 5, 6, 8, 8, 7, 6, 7, 1, 7, 9, 0, 4, 9, 4, 6, 0, 1, 6, 5, 3, 4, 6, 6, 8, 0, 4, 9, 8, 8, 6, 2, 7, 2, 3, 2, 7, 9, 1, 7, 8, 6, 0, 8, 5, 7, 8, 4, 3, 8, 3, 8, 2, 7, 9, 6, 7, 9, 7, 6, 6, 8, 1, 4, 5, 4, 1, 0, 0, 9, 5, 3, 8, 8, 3, 7, 8, 6, 3, 6, 0, 9, 5, 0, 6, 8, 0, 0, 6, 4, 2, 2, 5, 1, 2, 5, 2, 0, 5, 1, 1, 7, 3, 9, 2, 9, 8, 4, 8, 9, 6, 0, 8, 4, 1, 2, 8, 4, 8, 8, 6, 2, 6, 9, 4, 5, 6, 0, 4, 2, 4, 1, 9, 6, 5, 2, 8, 5, 0, 2, 2, 2, 1, 0, 6, 6, 1, 1, 8, 6, 3, 0, 6, 7, 4, 4, 2, 7, 8, 6, 2, 2, 0, 3, 9, 1, 9, 4, 9, 4, 5, 0, 4, 7, 1, 2, 3, 7, 1, 3, 7, 8, 6, 9, 6, 0, 9, 5, 6, 3, 6, 4, 3, 7, 1, 9, 1, 7, 2, 8, 7, 4, 6, 7, 7, 6, 4, 6, 5, 7, 5, 7, 3, 9, 6, 2, 4, 1, 3, 8, 9, 0, 8, 6, 5, 8, 3, 2, 6, 4, 5, 9, 9, 5, 8, 1, 3, 3, 9, 0, 4, 7, 8, 0, 2, 7, 5, 9, 0, 0, 9, 9], "ctrl": [9, 8, 1, 4, 9, 7, 0, 5, 3, 6, 3, 7, 7, 5, 3, 9, 0, 9, 0, 9, 6, 9, 1, 8, 4, 6, 8, 6, 6, 8, 9, 6, 4, 2, 6, 1, 8, 3, 2, 4, 4, 8, 2, 1, 3, 4, 1, 4, 9, 2, 1, 3, 8, 8, 7, 2, 7, 2, 2, 2, 7, 4, 1, 9, 8, 6, 0, 1, 6, 5, 3, 0, 9, 0, 1, 1, 0, 0, 2, 1, 5, 8, 1, 2, 8, 7, 6, 6, 4, 8, 7, 7, 5, 2, 5, 2, 8, 2, 2, 4, 3, 0, 8, 8, 4, 6, 4, 8, 7, 2, 0, 7, 1, 1, 1, 6, 1, 0, 8, 1, 0, 4, 0, 4, 0, 5, 0, 9, 5, 5, 3, 1, 3, 7, 1, 3, 6, 4, 1, 4, 3, 1, 3, 9, 5, 6, 0, 2, 9, 9, 5, 5, 9, 1, 2, 9, 0, 0, 0, 1, 8, 0, 7, 2, 5, 8, 0, 8, 7, 2, 4, 9, 5, 4, 7, 4, 2, 4, 6, 9, 1, 8, 5, 0, 9, 2, 7, 7, 4, 1, 1, 9, 8, 1, 5, 0, 3, 8, 5, 7, 0, 6, 0, 2, 8, 8, 5, 5, 7, 2, 7, 9, 5, 3, 8, 2, 0, 9, 8, 7, 4, 4, 1, 1, 0, 3, 5, 3, 1, 0, 9, 1, 3, 8, 4, 1, 0, 1, 5, 8, 9, 9, 2, 4, 3, 6, 1, 2, 5, 6, 4, 0, 6, 6, 6, 1, 6, 4, 3, 7, 8, 7, 8, 8, 8, 3, 7, 7, 9, 6, 6, 5, 8, 7, 7, 0, 8, 9, 7, 3, 3, 4, 2, 7, 1, 0, 8, 4, 9, 7, 2, 6, 3, 5, 8, 6, 2, 8, 3, 0, 5, 4, 0, 4, 2, 3, 3, 1, 9, 0, 1, 2, 0, 4, 2, 0, 1, 6, 4, 4, 1, 7, 2, 1, 2, 8, 1, 0, 2, 5, 9, 7, 5, 1, 9, 9, 0, 7, 5, 2, 3, 1, 2, 3, 6, 4, 0, 8, 3, 0, 8, 5, 4, 3, 4, 5, 2, 4, 4, 6, 1, 6, 7, 5, 4, 9, 1, 9, 4, 5, 7, 7, 9, 4, 8, 0, 9, 2, 8, 1, 2, 8, 5, 5, 5, 0, 8, 8, 6, 0, 6, 0, 0, 8, 9, 6, 2, 2, 4, 7, 3, 1, 4, 7, 5, 5, 8, 3, 7, 0, 1, 6, 8, 1, 5, 8, 7, 4, 1, 7, 6, 3, 8, 9, 1, 3, 7, 7, 4, 8, 6, 8, 0, 3, 8, 3, 2, 6, 1, 9, 8, 2, 9, 6, 2, 0, 4, 8, 5, 0, 0, 8, 1, 7, 3, 8, 5, 6, 4, 3, 2, 0, 8, 4, 5, 1, 0, 6, 0, 0, 1, 2, 1, 1, 3, 9, 1, 7, 8, 0, 5, 3, 5, 8, 9, 9, 6, 3, 0, 8, 2, 2, 9, 2, 7, 5, 7, 7, 4, 2, 8, 9, 8, 1, 8, 5, 9, 1, 1, 1, 2, 0, 0, 3, 4, 6, 5, 0, 2, 7, 3, 2, 6, 6, 2, 6, 6, 6, 6, 2, 8, 8, 0, 0, 8, 8, 7, 0, 9, 3, 1, 6, 9, 3, 3, 0, 8, 5, 7, 5, 1, 4, 0, 8, 0, 3, 2, 4, 4, 6, 4, 3, 3, 2, 0, 0, 8, 7, 5, 0, 7, 8, 1, 2, 4, 2, 1, 3, 5, 4, 6, 9, 5, 3, 6, 0, 8, 3, 0, 2, 0, 8, 5, 3, 4, 9, 8, 4, 6, 1, 1, 9, 4, 2, 3, 2, 9, 8, 5, 3, 9, 1, 8, 6, 8, 3, 1, 8, 4, 7, 4, 6, 8, 5, 6, 7, 0, 8, 0, 0, 6, 1, 2, 6, 2, 4, 5, 8, 2, 3, 4, 9, 6, 6, 5, 7, 7, 8, 1, 4, 8, 8, 3, 1, 2, 6, 6, 1, 8, 4, 4, 8, 8, 6, 7, 5, 3, 1, 2, 0, 0, 2, 4, 5, 7, 3, 1, 3, 8, 7, 3, 9, 4, 9, 1, 1, 1, 1, 8, 2, 1, 1, 6, 0, 3, 1, 4, 8, 7, 6, 7, 0, 3, 1, 1, 0, 0, 7, 4, 9, 6, 7, 4, 5, 7, 9, 8, 7, 1, 4, 2, 4, 5, 2, 0, 4, 3, 7, 9, 3, 4, 7, 4, 0, 9, 1, 4, 6, 4, 8, 1, 2, 9, 9, 5, 7, 0, 8, 4, 9, 0, 1, 6, 4, 6, 1, 1, 7, 3, 2, 3, 1, 7, 0, 6, 0, 4, 7, 1, 4, 3, 3, 6, 3, 2, 0, 0, 8, 6, 7, 4, 8, 2, 5, 7, 3, 6, 4, 3, 7, 1, 3, 8, 3, 4, 1, 4, 1, 8, 4, 7, 0, 8, 8, 3, 9, 3, 4, 6, 8, 6, 4, 4, 5, 0, 8, 1, 4, 8, 5, 4, 6, 2, 9, 8, 4, 3, 2, 4, 1, 9, 9, 1, 5, 5, 8, 8, 2, 5, 2, 1, 5, 9, 0, 7, 9, 1, 0, 9, 6, 8, 7, 0, 3, 3, 2, 2, 7, 9, 5, 1, 9, 0, 7, 2, 2, 4, 6, 3, 6, 5, 7, 0, 8, 9, 8, 8, 6, 3, 9, 2, 6, 4, 8, 9, 2, 3, 3, 7, 4, 8, 1, 1, 1, 1, 6, 6, 2, 5, 0, 7, 2, 7, 9, 1, 4, 9, 2, 1, 6, 1, 3, 3, 7, 2, 5, 0, 1, 5, 7, 4, 4, 0, 8, 4, 3, 4, 2, 6, 5, 7, 4, 5, 6, 7, 7, 4, 1, 3, 3, 2, 6, 0, 1, 5, 7, 4, 5, 4, 9, 5, 9, 8, 6, 6, 8, 6, 6, 1, 9, 7, 9, 9, 3, 5, 6, 1, 4, 3, 2, 8, 2, 7, 0, 7, 4, 9, 8, 3, 5, 5, 1, 3, 2, 6, 4, 1, 1, 5, 0, 1, 7, 7, 2, 0, 2, 6, 0, 2, 8, 3, 3, 4, 7, 5, 6, 2, 5, 6, 1, 2, 0, 4, 3, 2, 7, 8, 7, 5, 9, 1, 3, 0, 6, 2, 9, 7, 5, 6, 5, 0, 3, 2, 1, 6, 6, 7, 9, 7, 9, 6, 8, 5, 3, 3, 7, 1, 7, 3, 1, 1, 7, 5, 7, 8, 9, 3, 6, 6, 4, 3, 7, 2, 7, 4, 7, 1, 8, 5, 1, 0, 4, 3, 2, 8, 9, 9, 6, 1, 0, 9, 0, 5, 6, 8, 7, 6, 3, 9, 3, 0, 6, 8, 5, 5, 7, 7, 7, 0, 3, 7, 7, 0, 1, 0, 0, 4, 7, 3, 8, 5, 5, 0, 4, 2, 1, 2, 5, 2, 4, 3, 9, 1, 2, 2, 6, 9, 5, 4, 5, 5, 6, 2, 2, 5, 3, 9, 7, 2, 0, 5, 9, 8, 5, 5, 2, 4, 6, 9, 8, 8, 2, 8, 7, 7, 7, 2, 7, 0, 6, 5, 5, 4, 6, 1, 9, 8, 0, 1, 1, 5, 3, 4, 0, 2, 1, 0, 9, 3, 4, 4, 6, 6, 8, 3, 5, 1, 9, 7, 8, 4, 5, 2, 3, 6, 1, 6, 6, 8, 8, 8, 0, 1, 6, 8, 6, 8, 1, 8, 0, 0, 9, 6, 5, 7, 7, 6, 1, 7, 6, 2, 2, 0, 1, 9, 6, 2, 9, 3, 4, 3, 6, 3, 9, 9, 3, 7, 3, 2, 5, 5, 9, 0, 7, 7, 3, 8, 3, 1, 3, 5, 0, 9, 8, 3, 9, 1, 7, 9, 8, 4, 5, 9, 0, 4, 8, 0, 9, 1, 0, 6, 5, 2, 8, 8, 1, 2, 5, 6, 4, 2, 8, 5, 6, 6, 5, 5, 3, 3, 6, 5, 2, 5, 0, 3, 4, 8, 1, 5, 1, 2, 3, 3, 8, 2, 6, 1, 0, 8, 9, 2, 3, 5, 9, 5, 0, 5, 1, 8, 3, 6, 0, 9, 9, 9, 9, 9, 7, 8, 6, 2, 3, 1, 7, 0, 9, 4, 8, 9, 9, 3, 1, 0, 7, 8, 0, 2, 2, 6, 4, 7, 7, 6, 5, 0, 5, 3, 7, 3, 9, 3, 3, 5, 6, 3, 1, 0, 7, 7, 9, 2, 9, 3, 2, 3, 0, 3, 9, 2, 0, 6, 5, 1, 6, 7, 3, 4, 2, 1, 5, 5, 4, 6, 7, 9, 7, 4, 7, 2, 0, 2, 9, 5, 5, 3, 2, 5, 7, 2, 8, 5, 8, 8, 6, 3, 4, 7, 9, 3, 7, 2, 4, 5, 2, 7, 8, 7, 4, 6, 2, 6, 9, 3, 5, 7, 3, 9, 7, 3, 0, 8, 4, 9, 7, 8, 7, 6, 9, 8, 3, 4, 0, 1, 7, 9, 0, 3, 1, 3, 4, 0, 1, 2, 2, 6, 7, 2, 3, 9, 3, 8, 3, 1, 9, 2, 0, 0, 0, 6, 6, 2, 7, 2, 1, 3, 3, 8, 7, 0, 7, 7, 1, 5, 3, 6, 6, 0, 9, 4, 5, 6, 8, 3, 7, 0, 1, 9, 7, 0, 7, 7, 8, 8, 3, 3, 9, 6, 7, 0, 7, 3, 9, 1, 4, 3, 3, 4, 1, 1, 8, 4, 4, 8, 1, 3, 9, 3, 9, 9, 6, 5, 1, 4, 7, 1, 1, 7, 8, 7, 6, 1, 7, 0, 9, 3, 7, 2, 9, 2, 8, 8, 6, 1, 9, 6, 8, 5, 5, 3, 1, 1, 2, 8, 2, 3, 5, 4, 6, 6, 1, 9, 6, 7, 3, 2, 3, 5, 2, 2, 9, 7, 0, 3, 2, 2, 9, 4, 8, 8, 0, 2, 1, 9, 9, 4, 7, 3, 7, 7, 0, 9, 0, 0, 3, 1, 2, 2, 0, 1, 6, 2, 9, 4, 2, 3, 4, 9, 3, 7, 8, 1, 2, 7, 4, 0, 3, 2, 7, 0, 8, 5, 0, 0, 2, 0, 9, 1, 9, 8, 0, 2, 4, 9, 9, 9, 8, 3, 6, 1, 2, 5, 5, 6, 5, 5, 7, 9, 1, 7, 7, 8, 0, 3, 1, 4, 5, 0, 7, 9, 8, 2, 4, 5, 6, 1, 3, 3, 5, 6, 1, 6, 0, 2, 0, 5, 9, 9, 7, 8, 1, 0, 5, 6, 3, 7, 4, 7, 6, 7, 2, 1, 4, 5, 0, 5, 5, 2, 8, 5, 0, 0, 5, 1, 0, 7, 5, 0, 6, 1, 7, 9, 4, 7, 3, 8, 2, 7, 5, 1, 0, 5, 5, 6, 8, 2, 6, 5, 7, 0, 8, 7, 3, 3, 8, 1, 2, 5, 5, 6, 3, 6, 6, 7, 3, 4, 9, 1, 4, 7, 2, 6, 6, 2, 4, 6, 3, 1, 6, 1, 8, 0, 8, 8, 7, 0, 3, 6, 9, 4, 5, 0, 7, 1, 8, 5, 0, 7, 4, 7, 0, 1, 6, 8, 2, 6, 5, 4, 5, 6, 5, 5, 3, 8, 2, 4, 4, 2, 5, 7, 9, 3, 2, 0, 9, 0, 4, 8, 2, 0, 2, 2, 9, 2, 0, 7, 2, 1, 4, 9, 7, 2, 0, 3, 3, 7, 1, 9, 6, 9, 8, 6, 6, 9, 4, 3, 8, 1, 2, 6, 3, 1, 0, 3, 9, 4, 0, 1, 8, 5, 2, 7, 0, 4, 6, 4, 0, 9, 1, 2, 1, 1, 9, 4, 6, 0, 2, 2, 3, 1, 3, 1, 8, 3, 9, 0, 4, 5, 3, 9, 5, 4, 4, 5, 2, 9, 5, 0, 7, 2, 6, 2, 5, 4, 1, 6, 7, 7, 6, 2, 0, 2, 5, 7, 9, 8, 8, 2, 7, 6, 8, 6, 6, 8, 0, 0, 7, 5, 4, 8, 1, 5, 6, 7, 9, 4, 0, 5, 8, 4, 5, 6, 6, 7, 2, 0, 2, 1, 2, 6, 8, 5, 8, 4, 0, 2, 7, 0, 1, 8, 3, 0, 7, 3, 9, 4, 0, 1, 7, 7, 6, 4, 6, 3, 0, 8, 1, 5, 3, 0, 1, 0, 9, 0, 2, 9, 4, 7, 3, 5, 2, 1], "name": "pi"};
+const S = 18;  // points per chord
+// one distinct colour per symbol (stepped colourscale)
+const palette = B => {
+  const out = [];
+  for (let d = 0; d < B; d++) {
+    const c = `hsl(${Math.round(360 * d / B)}, 75%, 58%)`;
+    out.push([d / B, c], [(d + 1) / B, c]);
+  }
+  return out;
+};
+function traces(x, n, hz) {
+  const B = D.base, X = [], Y = [], Z = [], C = [];
+  for (let i = 0; i < n; i++) {
+    const t0 = 2 * Math.PI * (x[i] + 0.08 + 0.84 * i / n) / B;
+    const t1 = 2 * Math.PI * (x[i + 1] + 0.08 + 0.84 * (i + 1) / n) / B;
+    const ax = Math.cos(t0), ay = Math.sin(t0), bx = Math.cos(t1), by = Math.sin(t1);
+    for (let s = 0; s <= S; s++) {
+      const t = s / S, u = 1 - t;
+      X.push(u * u * ax + t * t * bx); Y.push(u * u * ay + t * t * by); Z.push((i + t) * hz); C.push(x[i]);
+    }
+    X.push(null); Y.push(null); Z.push(null); C.push(x[i]);
+  }
+  const lab = [...Array(B).keys()];
+  return [{type: 'scatter3d', mode: 'lines', x: X, y: Y, z: Z, hoverinfo: 'skip',
+            line: {color: C, colorscale: palette(B), cmin: -0.5, cmax: B - 0.5, width: 2}},
+          {type: 'scatter3d', mode: 'text', hoverinfo: 'skip',
+            x: lab.map(d => 1.15 * Math.cos(2 * Math.PI * (d + 0.5) / B)),
+            y: lab.map(d => 1.15 * Math.sin(2 * Math.PI * (d + 0.5) / B)),
+            z: lab.map(() => 0), text: lab.map(String),
+            textfont: {size: 14, color: lab.map(d => palette(B)[2 * d][1])}}];
+}
+let syncing = false;
+function draw() {
+  const n = Math.min(+document.getElementById('nch').value, D.src.length - 1);
+  const hz = +document.getElementById('hz').value;
+  const fg = getComputedStyle(document.body).color;
+  const ax = {visible: false};
+  [[D.src, 'p0', D.name], [D.ctrl, 'p1', 'random control']].forEach(([x, id, title]) => {
+    Plotly.react(id, traces(x, n, hz), {
+      paper_bgcolor: 'rgba(0,0,0,0)', font: {color: fg}, showlegend: false,
+      margin: {l: 0, r: 0, t: 30, b: 0}, title: {text: title, font: {size: 14}},
+      scene: {xaxis: ax, yaxis: ax, zaxis: ax, aspectmode: 'manual', aspectratio: {x: 1, y: 1, z: 1.6},
+               camera: {eye: {x: 1.6, y: 1.6, z: 0.9}}},
+    }, {responsive: true, displaylogo: false});
+  });
+  ['p0', 'p1'].forEach((id, k) => {
+    const el = document.getElementById(id);
+    el.removeAllListeners && el.removeAllListeners('plotly_relayout');
+    el.on('plotly_relayout', ev => {
+      if (syncing || !document.getElementById('sync').checked || !ev['scene.camera']) return;
+      syncing = true;
+      Plotly.relayout(k ? 'p0' : 'p1', {'scene.camera': ev['scene.camera']}).then(() => syncing = false);
+    });
+  });
+}
+['nch', 'hz'].forEach(id => document.getElementById(id).onchange = draw);
+draw();
+</script></main></body></html>

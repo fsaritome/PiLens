@@ -37,3 +37,15 @@ def test_cli_lens_params_get_own_key():
           "--controls", "20", "--no-classifier", "--jobs", "1"])
     keys = {s["key"] for s in json.loads((store.runs_dir() / "pi_b10_n3000" / "summary.json").read_text())}
     assert any(k.startswith("grid__") for k in keys)
+
+
+def test_chord_3d_page():
+    main(["run", "--lens", "chord", "--source", "random", "--base", "10", "--n", "3000", "--controls", "20",
+          "--no-classifier", "--jobs", "1"])
+    run = next(d.name for d in store.list_runs() if d.name.startswith("random_s12345_b10_n3000"))
+    c = TestClient(app)
+    r = c.get(f"/run/{run}/chord")
+    assert "view the chords in 3D" in r.text
+    r = c.get(f"/run/{run}/chord/3d")
+    assert r.status_code == 200 and "scatter3d" in r.text and '"ctrl"' in r.text
+    assert c.get("/run/nope/chord/3d").status_code == 404
