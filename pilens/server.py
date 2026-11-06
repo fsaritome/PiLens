@@ -296,7 +296,7 @@ def formula_hunt(hid: str):
 <h1>{html.escape(h['family']['name'] or hid)}</h1>
 <p class="mut">a ranges {h['family']['a']}, b ranges {h['family']['b']} (constant term first) &middot;
 {h['n_candidates']:,} fractions &middot; {h['n_eligible']:,} converged to 7+ digits at depth {h['depth']} &middot;
-{h['elapsed_s']}s.</p>
+{h['elapsed_s']}s. <a href="/formulas/{html.escape(hid)}/3d"><b>&rarr; view in 3D</b></a></p>
 <div class="pair">
 <figure><img src="/hunt-img/{hid}/landscape_target.png" alt="landscape vs pi"><figcaption>vs &pi;: {t['matches']} matches,
 {_hunt_counts(t)}. x = {html.escape(h.get('landscape_axes', ['?', '?'])[0])}, y (up) =
@@ -319,6 +319,98 @@ async function rateF(btn,key,v){{
 }}
 </script>"""
     return page(f"{hid} · formula hunt", body)
+
+
+PLOTLY = "https://cdn.jsdelivr.net/npm/plotly.js-dist-min@2.35.2/plotly.min.js"
+
+
+@app.get("/formulas/{hid}/3d", response_class=HTMLResponse)
+def formula_hunt_3d(hid: str):
+    """The hits as points in coefficient space: pick any three varying coefficients as
+    axes (and one for colour); the shadows on the walls are the flat landscape maps."""
+    from .hunt import axis_label, hunts_dir
+
+    f = (hunts_dir() / hid / "hunt.json").resolve()
+    if not f.is_relative_to(hunts_dir().resolve()) or not f.exists():
+        raise HTTPException(404)
+    h = json.loads(f.read_text(encoding="utf-8"))
+    fam = h["family"]
+    dims = [{"side": s, "k": k, "label": axis_label((s, k)), "lo": r[0], "hi": r[1]}
+            for s in ("a", "b") for k, r in enumerate(fam[s]) if r[0] < r[1]]
+
+    def pts(hits):
+        out = []
+        for r in hits:
+            if r["status"] not in ("verified", "probable"):
+                continue
+            out.append({"a": r["a"], "b": r["b"], "txt": f"a(n) = {r['a_str']}<br>b(n) = {r['b_str']}<br>"
+                        f"limit: {r['relation']}<br>{r['status']}, {r['digits']:.0f} digits"})
+        return out
+
+    tgt, nul = pts(h["target"]["hits"]), pts(h["null"]["hits"])
+    # default axes: the coefficients that vary most among the pi hits
+    def spread(d):
+        vals = {(p[d["side"]] + [0] * 9)[d["k"]] for p in tgt}
+        return len(vals)
+    order = sorted(range(len(dims)), key=lambda i: -spread(dims[i]))
+    data = {"dims": dims, "target": tgt, "null": nul, "order": order}
+    const = "π" if h["constant"] == "pi" else h["constant"]
+    body = f"""<div class="nav"><a href="/formulas/{html.escape(hid)}">&larr; back to the flat maps</a></div>
+<h1>{html.escape(fam['name'] or hid)}: 3D view</h1>
+<p class="mut">Every rule this hunt tried is a point in a box of whole-number settings (the grey frame). The
+<b class="sig">coloured dots</b> are the rules whose fraction turned out to equal a formula in {const}; with more
+than three settings, the colour shows a fourth one. Bright red crosses would be hits on the random control number
+(there should be none). Drag to rotate, scroll to zoom, hover a dot for its formula. The grey shadows on the
+walls are what the flat maps show: a 3D trail seen from one side.</p>
+<div class="card" style="display:flex;gap:12px;flex-wrap:wrap;align-items:center">
+<label>x <select id="ax0"></select></label><label>y <select id="ax1"></select></label>
+<label>z <select id="ax2"></select></label><label>colour <select id="ax3"></select></label>
+<span class="mut">{len(tgt)} {const} hits, {len(nul)} control hits, {len(dims)} settings vary in this hunt</span></div>
+<div id="plot" class="card" style="height:640px;padding:0;overflow:hidden"></div>
+<script src="{PLOTLY}"></script>
+<script>
+const D = {json.dumps(data, ensure_ascii=False)};
+const sel = [0,1,2,3].map(i => document.getElementById('ax'+i));
+sel.forEach((s, i) => {{
+  if (i === 3) s.add(new Option('(none)', -1));
+  D.dims.forEach((d, j) => s.add(new Option(d.label, j)));
+  s.value = i < 3 ? (D.order[i] ?? D.order.at(-1) ?? 0) : (D.order[3] ?? -1);
+  s.onchange = draw;
+}});
+const coef = (p, d) => (p[d.side][d.k] ?? 0);
+function draw() {{
+  const ax = sel.map(s => +s.value);
+  const css = getComputedStyle(document.body);
+  const fg = css.color, line = css.getPropertyValue('--line').trim() || '#888';
+  const [dx, dy, dz] = ax.slice(0, 3).map(i => D.dims[i]);
+  const dc = ax[3] >= 0 ? D.dims[ax[3]] : null;
+  const pts = (P, name, color) => ({{
+    type: 'scatter3d', mode: 'markers', name,
+    x: P.map(p => coef(p, dx)), y: P.map(p => coef(p, dy)), z: P.map(p => coef(p, dz)),
+    text: P.map(p => p.txt), hovertemplate: '%{{text}}<extra></extra>',
+    marker: {{size: 6, line: {{width: 0}}, symbol: color === 'gold' ? 'circle' : 'cross',
+      color: dc && P.length && color === 'gold' ? P.map(p => coef(p, dc)) : color,
+      colorscale: 'YlOrRd', reversescale: true,
+      colorbar: dc && color === 'gold' ? {{title: {{text: 'colour = ' + dc.label.replace('coefficient of ', ''), side: 'top', font: {{color: fg, size: 12}}}}, thickness: 12, len: 0.6, tickfont: {{color: fg}}}} : undefined}},
+    projection: {{x: {{show: true, opacity: 0.25, scale: 0.6}}, y: {{show: true, opacity: 0.25, scale: 0.6}}, z: {{show: true, opacity: 0.25, scale: 0.6}}}},
+  }});
+  // wireframe of the search box
+  const [x0, x1, y0, y1, z0, z1] = [dx.lo, dx.hi, dy.lo, dy.hi, dz.lo, dz.hi];
+  const E = [[[x0,y0,z0],[x1,y0,z0]],[[x0,y1,z0],[x1,y1,z0]],[[x0,y0,z1],[x1,y0,z1]],[[x0,y1,z1],[x1,y1,z1]],
+             [[x0,y0,z0],[x0,y1,z0]],[[x1,y0,z0],[x1,y1,z0]],[[x0,y0,z1],[x0,y1,z1]],[[x1,y0,z1],[x1,y1,z1]],
+             [[x0,y0,z0],[x0,y0,z1]],[[x1,y0,z0],[x1,y0,z1]],[[x0,y1,z0],[x0,y1,z1]],[[x1,y1,z0],[x1,y1,z1]]];
+  const box = {{type: 'scatter3d', mode: 'lines', name: 'search box', hoverinfo: 'skip',
+    x: E.flatMap(e => [e[0][0], e[1][0], null]), y: E.flatMap(e => [e[0][1], e[1][1], null]),
+    z: E.flatMap(e => [e[0][2], e[1][2], null]), line: {{color: 'rgba(128,128,140,0.5)', width: 2}}}};
+  const axis = d => ({{title: {{text: d.label}}, range: [d.lo - 0.5, d.hi + 0.5], color: fg, gridcolor: line, zeroline: false}});
+  Plotly.react('plot', [box, pts(D.target, '{const} hits', 'gold'), pts(D.null, 'control hits', '#e0443c')], {{
+    paper_bgcolor: 'rgba(0,0,0,0)', font: {{color: fg}}, margin: {{l: 0, r: 0, t: 0, b: 0}},
+    legend: {{x: 0, y: 1}}, scene: {{xaxis: axis(dx), yaxis: axis(dy), zaxis: axis(dz), aspectmode: 'cube'}},
+  }}, {{responsive: true, displaylogo: false}});
+}}
+draw();
+</script>"""
+    return page(f"{hid} · 3D", body)
 
 
 @app.get("/hunt-img/{hid}/{name}")

@@ -81,6 +81,8 @@ def test_formula_pages():
     r = c.get(f"/formulas/{hid}")
     assert r.status_code == 200 and "landscape" in r.text
     assert c.get(f"/hunt-img/{hid}/landscape_target.png").headers["content-type"] == "image/png"
+    r = c.get(f"/formulas/{hid}/3d")
+    assert r.status_code == 200 and "scatter3d" in r.text and '"dims"' in r.text
     r = c.post("/api/rate-formula", json={"run": hid, "key": "2n+1 | n^2", "rating": 1})
     assert r.json()["up"] == 1
     assert c.get("/formulas/..%2F..%2Fx").status_code == 404
