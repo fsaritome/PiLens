@@ -243,7 +243,9 @@ and scaling, so "not marked classical" never means "new". Results so far are in
 
 Checked against the Ramanujan Machine's collection of 149 published π formulas: all 65
 π identities found so far are either the same as a known formula (22) or share the
-convergence fingerprint of one (43). Nothing found here is new.
+convergence fingerprint of one (43). Nothing found here is new. A follow-up search aimed at
+unexplored convergence speeds (with PSLQ for large coefficients) found no π formula there
+at all. See the conclusion in [NOTES.md](NOTES.md).
 
 ## Layout
 

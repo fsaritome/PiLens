@@ -230,13 +230,51 @@ Ramanujan-type fast series), and PiLens never found any of those. A genuinely ne
 would most likely show up as a new (δ, r) pair. That needs higher-degree families and a
 search aimed at faster convergence, not more rounds in the current neighbourhood.
 
+## Speed-class search (rounds 114–120, 2026-11-06)
+
+Retargeted loop: Claude scores only for an identity whose fingerprint (δ, r) matches none of
+the 29 known classes (the 171 Ramanujan Machine formulas plus all PiLens finds). Degree caps
+raised to 4/8, coefficients to 10⁶. Fast fractions that miss the small Mobius table get a
+PSLQ integer-relation search with coefficients up to 10⁶; tested on published formulas, it
+recovers e.g. 72/(3π − 8) from a box around it and finds nothing for the random control.
+
+| | |
+|---|---|
+| API rounds | 6 completed (~$2.20), stopped by hand |
+| families / fractions | 17 / 5.76 million |
+| π identities verified | **3**, all in round 114 and all in known classes (2/(π+2), −2/(π+4), 4/π) |
+| new speed classes | **0** |
+| control hits | 0 |
+
+From round 115 on, Claude aimed at speeds no known formula has (root ratios 4, 8, 9, 27/8,
+alternating balances…). Those 15 families gave **no π identity at all**, not even known ones.
+Two reasons: fast π formulas have highly structured lower coefficients (they come from
+hypergeometric series and similar), which a box of integers almost never hits; and the
+families were large, so PSLQ only checked a random 4–10 % of their fast fractions.
+
+## Conclusion
+
+* **Phase 1:** no lens finds structure in the digits of π (or e, √2) that random digits
+  don't have. The judge is calibrated: it flags planted structure at 2–3 % strength and has
+  the expected false-positive rate.
+* **Phase 2:** the formula hunt works: 92 million fractions in 316 hunts, **65 distinct π
+  identities, every one verified to high precision, 0 confirmed false positives**. But all
+  65 are known: 22 are literally in the Ramanujan Machine collection, the rest share the
+  fingerprint of a known formula, and all sit in 3 well-known speed classes.
+* Spending: about **$32–34 of the $50** (recorded estimate $31.51 from token counts, plus
+  a few requests cut off when runs were stopped). The rest was not spent, because returns
+  had dropped to zero.
+* A new formula would need a *structured* generator (building fractions from
+  hypergeometric-type series or a conservative matrix field) rather than brute-force boxes.
+  That is the Ramanujan Machine group's own method, and a research project of its own.
+
 ## Next ideas
 
-* Aim the search at a new speed class: families whose convergence rate is not ln 2,
-  ln(3+2√2) or power-law (e.g. degree-3 a(n) with degree-6 b(n), as in Apéry-like formulas),
-  and score Claude on new (δ, r) pairs instead of new cores.
-
-* `pilens novelty` after each evolve run, then compare survivors with the Ramanujan Machine data.
+* Structured generation instead of boxes: build candidate fractions from hypergeometric
+  term ratios (Claude proposes the series, PiLens converts it), so every candidate is
+  "formula-shaped"; keep the speed-class score.
+* PSLQ on every fast fraction (vectorised LLL instead of one mpmath call each), so large
+  families are fully covered instead of sampled.
 * Allow a(n) of degree 2 with b(n) of degree 4 over wider ranges, with Mobius ≤ 12; that
   is where Apéry-style formulas live.
 * Add an equivalence test beyond shift and scaling (compare limits under general Mobius
