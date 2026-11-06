@@ -112,6 +112,13 @@ def cmd_evolve(a) -> None:
         run_round()
 
 
+def cmd_novelty(a) -> None:
+    from .novelty import run_check
+
+    consts = tuple(a.constant.split(",")) if a.constant != "all" else None
+    run_check(consts, recheck=a.recheck)
+
+
 def cmd_serve(a) -> None:
     import uvicorn
 
@@ -183,6 +190,11 @@ def main(argv=None) -> None:
     ev.add_argument("--proposals", default=None, help="run one round from a JSON file instead of the API")
     ev.add_argument("--proposer", default="file", help="label recorded for --proposals rounds")
     ev.set_defaults(fn=cmd_evolve)
+
+    nv = sub.add_parser("novelty", help="look found identities up in the OEIS (are they known?)")
+    nv.add_argument("--constant", default="all", help="pi | e | comma list | all")
+    nv.add_argument("--recheck", action="store_true", help="look up cores already checked again")
+    nv.set_defaults(fn=cmd_novelty)
 
     sv = sub.add_parser("serve", help="web gallery with thumbs up/down ratings")
     sv.add_argument("--host", default="127.0.0.1")

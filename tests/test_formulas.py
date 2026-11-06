@@ -94,3 +94,25 @@ def test_equivalence_reduction():
     # a fraction with no linear factor in a(n) is left alone
     a, b = (-1, 3, 3), (0, 0, 6, -1, -2)
     assert gcf.reduce_equivalence(a, b) == (a, b)
+
+
+def test_novelty_sequences_and_lookup(tmp_path):
+    from pilens import novelty as nv
+
+    # 4/pi = 1 + 1/(3 + 4/(5 + 9/(7 + ...))): a = 2n+1, b = n^2
+    P, Q = nv.convergent_sequences((1, 2), (0, 0, 1), 6)
+    assert P[:3] == [1, 4, 24] and Q[:4] == [1, 3, 19, 160]
+    assert nv.search_terms([0, 1, -2, -4, -6, -8, -10]) == [1, 2, 3, 4, 5]
+
+    class Fake(nv.OEIS):
+        def search(self, terms):
+            return [{"id": "A000001", "name": "Expansion of 4/Pi", "text": "Expansion of 4/Pi"}]
+
+    r = nv.check_core((1, 2), (0, 0, 1), "pi", Fake(cache=tmp_path / "c.json"))
+    assert r["status"] == "known"
+
+    class Empty(nv.OEIS):
+        def search(self, terms):
+            return []
+
+    assert nv.check_core((1, 2), (0, 0, 1), "pi", Empty(cache=tmp_path / "c.json"))["status"] == "not in OEIS"

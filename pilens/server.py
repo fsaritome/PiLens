@@ -209,6 +209,23 @@ def formulas_index():
     for h in hunts:
         for r in h["distinct_relations"]:
             by_const.setdefault(h["constant"], {}).setdefault(r.get("core", r["orbit"]), []).append(r)
+    from .novelty import load_results
+
+    nov = load_results()
+
+    def oeis_cell(const, core):
+        n = nov.get(f"{const}: {core}")
+        if not n:
+            return "<span class='mut'>not checked</span>"
+        ids = []
+        for lk in n["lookups"].values():
+            for h in lk.get("hits", [])[:2]:
+                if h["id"] not in ids:
+                    ids.append(h["id"])
+        links = " ".join(f"<a href='https://oeis.org/{i}'>{i}</a>" for i in ids[:3])
+        cls = "sig" if n["status"] == "not in OEIS" else "mut"
+        return f"<span class='{cls}'>{html.escape(n['status'])}</span> {links}"
+
     sections = []
     for const, orbits in by_const.items():
         rows_i = []
@@ -220,11 +237,12 @@ def formulas_index():
                 f"<td><b>{html.escape(r['relation'])}</b> <span class='mut'>(e.g. a={html.escape(r['a_str'])}, "
                 f"b={html.escape(r['b_str'])})</span></td><td>{len({x['a_str'] + x['b_str'] for x in rs})}</td>"
                 f"<td>{html.escape(r['status'])}</td><td>{html.escape(r['rate'])}</td>"
-                f"<td>{'classical' if any(x['known'] for x in rs) else ''}</td></tr>")
+                f"<td>{'classical' if any(x['known'] for x in rs) else ''}</td>"
+                f"<td>{oeis_cell(const, orbit)}</td></tr>")
         name = "&pi;" if const == "pi" else html.escape(const)
         sections.append(f"<h2>Distinct identities with {name}: {len(orbits)}</h2><div class='card'><table>"
                         f"<tr><th>a(n)</th><th>b(n)</th><th>limit</th><th>variants</th><th>status</th>"
-                        f"<th>convergence</th><th></th></tr>{''.join(rows_i)}</table></div>")
+                        f"<th>convergence</th><th></th><th>OEIS</th></tr>{''.join(rows_i)}</table></div>")
     ident_html = "".join(sections)
     rounds = "".join(
         f"<tr><td>{r['round']}</td><td>{html.escape(r['proposer'])}</td><td>{r['score']}</td>"
@@ -242,7 +260,7 @@ The same search against a <b>random constant</b> is the control: it must stay at
 a few terms later (n &rarr; n + k), rescaling (a &rarr; c&middot;a, b &rarr; c&sup2;&middot;b), and polynomial
 "dressing" (a &rarr; c(n)&middot;a, b &rarr; c(n)c(n&minus;1)&middot;b). Each row is one such core; "variants" counts
 the fractions that reduce to it. Rows can still be equivalent through deeper transformations, and "classical" marks only the few formulas in PiLens's own short list,
-so an unmarked row is <i>not</i> a claim of novelty.</p>
+so an unmarked row is <i>not</i> a claim of novelty. The OEIS column comes from <code>pilens novelty</code>: it looks up the core's numerator and denominator sequences at oeis.org. "known" means a matching entry mentions the constant; "sequence in OEIS" means the sequence is catalogued but the entry does not mention the constant; "not in OEIS" means neither sequence is catalogued. That makes the identity a candidate, not proof that it is new.</p>
 {ident_html}
 <h2>Claude rounds</h2><div class="card"><table><tr><th>round</th><th>proposer</th><th>new identities</th>
 <th style="text-align:left">notes</th></tr>{rounds or '<tr><td>none yet: <code>pilens evolve</code></td></tr>'}</table></div>"""

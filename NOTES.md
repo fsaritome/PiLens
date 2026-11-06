@@ -146,9 +146,31 @@ What the loop learned:
 (classical continued fractions and the Ramanujan Machine papers). PiLens only removes
 shift and scaling duplicates and has no database of known formulas beyond three classics.
 
+## Novelty check against the OEIS (2026-11-06)
+
+`pilens novelty` looks up each core's convergent numerators and denominators at oeis.org
+(simplest form of the core, leading 0/±1 dropped, common factor removed, 10 terms).
+First run, 66 cores found by then (mid-way through the $50 evolve run):
+
+| constant | cores | known (entry mentions the constant) | sequence catalogued only | not in OEIS |
+|---|---|---|---|---|
+| e  | 9 | 9 | 0 | 0 |
+| π  | 57 | 6 | 6 | 45 |
+
+* Sanity check passes: every e identity, and the classical 4/π and Brouncker fractions,
+  are recognised. So the lookup does catch known material.
+* "Not in OEIS" is weak evidence for π. Convergent sequences are often not catalogued
+  even for known fractions (Euler's π + 3 only matches a sequence that does not mention π).
+  Many of the 45 share a pattern (a(n) = 3n + k with b(n) = −n(2n−1)-like factors, or
+  constant a(n) with b(n) = (2n−1)(2n+1)-like), so they are probably related to each other,
+  and to known families, by transformations PiLens does not remove yet (general Mobius /
+  "conservative matrix field" equivalences from the Ramanujan Machine papers).
+* Next check: compare against the Ramanujan Machine's published π fractions, then write up
+  whatever survives for a human expert.
+
 ## Next ideas
 
-* Run `pilens evolve` with an API key and let Claude steer for 10+ rounds.
+* `pilens novelty` after each evolve run, then compare survivors with the Ramanujan Machine data.
 * Allow a(n) of degree 2 with b(n) of degree 4 over wider ranges, with Mobius ≤ 12; that
   is where Apéry-style formulas live.
 * Add an equivalence test beyond shift and scaling (compare limits under general Mobius
