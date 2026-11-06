@@ -1,0 +1,14 @@
+{
+  "notes": "Round 2 widened the lower-order coefficients of all three known patterns (337k fractions) and found 0 new identities: every hit was a shift or rescaling of a known one. Either these patterns are exhausted, or their other members have limits outside the Mobius table (|coef| <= 6). Round 3 tests the second explanation by re-running the two richest patterns with a table up to |coef| <= 12, plus a fresh region: a(n) = n + i with b2 = 0 (b linear), where convergence is fast and nothing has been searched yet.",
+  "families": [
+    {"name": "r3 3n-type, Mobius <= 12",
+     "rationale": "Same region as r2's 3n family, larger target table: are there members whose limits need bigger coefficients?",
+     "a": [[-12, 12], [3, 3]], "b": [[-15, 15], [-15, 15], [-3, -1]], "mobius": 12},
+    {"name": "r3 2n-type, Mobius <= 12",
+     "rationale": "Same for the 2n | n^2 pattern.",
+     "a": [[-12, 12], [2, 2]], "b": [[-12, 12], [-12, 12], [1, 2]], "mobius": 12},
+    {"name": "r3 linear b: a = a1 n + a0, b = b1 n + b0",
+     "rationale": "b linear gives very fast convergence; unexplored so far. a1 1..6, wide constants.",
+     "a": [[-15, 15], [1, 6]], "b": [[-30, 30], [-30, 30]], "mobius": 8}
+  ]
+}

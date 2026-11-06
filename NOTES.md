@@ -77,3 +77,66 @@ is real, but it's the resemblance any random walk has, not something specific to
   "rediscovers" BBP structure would be a good sanity target for phase 2.
 * More controls (2,000+) if the number of lenses grows past ~12, since the smallest
   p is limited by 1/(N+1).
+
+---
+
+# Phase 2: formula hunt (2026-11-06)
+
+Phase 1 showed that pi's digits look random under every lens. Phase 2 searches where pi
+has structure: continued fractions a(0) + b(1)/(a(1) + b(2)/(a(2) + …)) with polynomial
+a(n), b(n), whose limit is (p0 + p1·π)/(q0 + q1·π). Every match is re-computed at 600-bit
+precision to depth 16,000, and the same search is run against a random constant as the
+control.
+
+## Totals
+
+| | |
+|---|---|
+| continued fractions scanned (π) | 1,479,498 |
+| distinct identities with π (up to shift and scaling) | **21** (19 verified to ~175 digits, 2 probable at 13–16 digits) |
+| matches against the random constant | 2 raw coincidences, **0 confirmed** |
+| same "linear b" family against e (contrast) | 0 identities with π, **9 distinct with e** (50 fractions) |
+
+## Rounds
+
+The proposals for rounds 1–4 are in `proposals/`. They were written by Claude Opus 5.5
+in the build session, because this machine has no API key. With a key, `pilens evolve`
+asks `claude-opus-5-5` the same question through the API.
+
+| round | idea | new distinct identities |
+|---|---|---|
+| 0 | classic preset: a linear, b quadratic, small coefficients | 11 (baseline) |
+| 1 | the convergence boundary a1² + 4·b2 ≈ 1; Euler-type constant a; quadratic a with quartic b | 2 |
+| 2 | each known pattern with much wider lower-order coefficients | 0 |
+| 3 | the same patterns with a larger target table (\|coef\| ≤ 12) | **8** |
+| 4 | the 3n pattern even wider; linear b; a1 = 1 | 0 |
+
+What the loop learned:
+* Identities come in a few parametric families. The dominant one is
+  a(n) = 3n + i, b(n) = −2n² + j·n + k, with limits like 2/π, 4/π, 2/(π+2), 6/(3π−8).
+  Most of them lie on a straight line in the (a0, b1) plane: see the landscape on the
+  "r3 3n-type" page of the gallery. The next is 2n+1 | n² (4/π), and the slow Euler-type
+  fractions with constant a and b = 4n² + ….
+* Widening the coefficients found nothing new (round 2). Widening the *targets* did
+  (round 3): the missing identities had limits with larger coefficients, like
+  12/(3π − 4).
+* Fractions with linear b(n) never give π (round 4), but the same 218k fractions give 9
+  distinct identities for e. This fits theory: linear-b fractions converge to ratios of
+  Bessel-type functions, which is e's world, while π needs quadratic b(n).
+* The two quadratic-a / quartic-b identities have the same limits as members of the 3n
+  family (2/(π+2), −2/(π+4)), so they are very likely the same fractions in disguise
+  (an equivalence transform with c_n ∝ n).
+
+**Novelty:** none claimed. The 2n+1 | n² and 3n | −2n² families are in the literature
+(classical continued fractions and the Ramanujan Machine papers). PiLens only removes
+shift and scaling duplicates and has no database of known formulas beyond three classics.
+
+## Next ideas
+
+* Run `pilens evolve` with an API key and let Claude steer for 10+ rounds.
+* Allow a(n) of degree 2 with b(n) of degree 4 over wider ranges, with Mobius ≤ 12; that
+  is where Apéry-style formulas live.
+* Add an equivalence test beyond shift and scaling (compare limits under general Mobius
+  maps), so "distinct" means distinct up to every known transformation.
+* Look for the *line*: the 3n family's identities lie on a line in coefficient space, so a
+  conjectured closed form for the whole line would be a real, checkable statement.

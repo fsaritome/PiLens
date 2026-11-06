@@ -1,0 +1,14 @@
+{
+  "notes": "Round 3 confirmed that the Mobius table was the bottleneck: the same 3n region with |coef| <= 12 doubled its patterns (7 -> 14), giving 8 new ones in total, and the control stayed at zero (1 raw coincidence, rejected by the deep check). My linear-b family was refused by the size cap (692k > 400k). Round 4 pushes the 3n pattern further with the big table, retries linear b at a legal size, and opens a1 = 1.",
+  "families": [
+    {"name": "r4 3n-type, b2 = -2, very wide, Mobius <= 12",
+     "rationale": "All 3n hits have b2 = -2; widen a0 to +-20 and b0, b1 to +-25 at that b2.",
+     "a": [[-20, 20], [3, 3]], "b": [[-25, 25], [-25, 25], [-2, -2]], "mobius": 12},
+    {"name": "r4 linear b (legal size)",
+     "rationale": "b(n) linear converges very fast and is still unexplored; a1 1..4, a0 +-10, b +-25.",
+     "a": [[-10, 10], [1, 4]], "b": [[-25, 25], [-25, 25]], "mobius": 8},
+    {"name": "r4 a1 = 1, Mobius <= 12",
+     "rationale": "a(n) = n + i has not produced hits at small sizes; with the larger table and b2 in -1..2 it might.",
+     "a": [[-15, 15], [1, 1]], "b": [[-20, 20], [-20, 20], [-1, 2]], "mobius": 12}
+  ]
+}

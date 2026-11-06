@@ -1,4 +1,4 @@
-"""Command line: ``pilens run | validate | digits | lenses | serve``."""
+"""Command line: ``pilens run | validate | digits | lenses | hunt | evolve | serve``."""
 
 from __future__ import annotations
 
@@ -85,6 +85,30 @@ def cmd_lenses(a) -> None:
         print(f"{name:<11} {l.description}\n            params: {l.defaults}  [{l.origin}]")
 
 
+def cmd_hunt(a) -> None:
+    import json
+
+    from .gcf import Family
+    from .hunt import PRESETS, run_hunt
+
+    spec = PRESETS[a.preset] if a.preset else json.loads(a.family)
+    h = run_hunt(Family.from_dict(spec), a.constant, a.depth, a.mobius, a.null_seed)
+    for r in h["distinct_relations"][: a.show]:
+        tag = f"  [{r['known'].split(':')[0]}]" if r["known"] else ""
+        print(f"  {r['status']:<9} a(n)={r['a_str']:<10} b(n)={r['b_str']:<14} -> {r['relation']:<16} "
+              f"{r['digits']:.0f} digits, {r['rate']}{tag}")
+
+
+def cmd_evolve(a) -> None:
+    from .evolve import load_proposal, run_round
+
+    for i in range(a.rounds):
+        if a.proposals:
+            run_round(load_proposal(a.proposals), proposer=a.proposer)
+            break
+        run_round()
+
+
 def cmd_serve(a) -> None:
     import uvicorn
 
@@ -95,6 +119,11 @@ def cmd_serve(a) -> None:
 
 
 def main(argv=None) -> None:
+    for stream in (sys.stdout, sys.stderr):
+        try:
+            stream.reconfigure(encoding="utf-8")
+        except (AttributeError, ValueError):
+            pass
     p = argparse.ArgumentParser(prog="pilens", description=__doc__)
     sub = p.add_subparsers(dest="cmd", required=True)
 
@@ -133,12 +162,31 @@ def main(argv=None) -> None:
     ls = sub.add_parser("lenses", help="list lenses and their parameters")
     ls.set_defaults(fn=cmd_lenses)
 
+    hu = sub.add_parser("hunt", help="search a family of continued fractions for formulas")
+    hu.add_argument("--preset", default=None, help="classic | small")
+    hu.add_argument("--family", default=None,
+                    help='JSON, e.g. {"a": [[-5,5],[0,4]], "b": [[-5,5],[-5,5],[-5,5]]}')
+    hu.add_argument("--constant", default="pi")
+    hu.add_argument("--depth", type=int, default=2000)
+    hu.add_argument("--mobius", type=int, default=6, help="max |coef| in (p0+p1 c)/(q0+q1 c)")
+    hu.add_argument("--null-seed", type=int, default=7)
+    hu.add_argument("--show", type=int, default=30)
+    hu.set_defaults(fn=cmd_hunt)
+
+    ev = sub.add_parser("evolve", help="Claude proposes families to hunt (phase 2)")
+    ev.add_argument("--rounds", type=int, default=1)
+    ev.add_argument("--proposals", default=None, help="run one round from a JSON file instead of the API")
+    ev.add_argument("--proposer", default="file", help="label recorded for --proposals rounds")
+    ev.set_defaults(fn=cmd_evolve)
+
     sv = sub.add_parser("serve", help="web gallery with thumbs up/down ratings")
     sv.add_argument("--host", default="127.0.0.1")
     sv.add_argument("--port", type=int, default=8765)
     sv.set_defaults(fn=cmd_serve)
 
     a = p.parse_args(argv)
+    if a.cmd == "hunt" and not (a.preset or a.family):
+        a.preset = "classic"
     a.fn(a)
 
 

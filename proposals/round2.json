@@ -1,0 +1,14 @@
+{
+  "notes": "Round 1: wider a1 (4..7) only produced rescaled copies of the 3n | -2n^2 family (6n = 2 x 3n), so 'a1^2 + 4 b2 = 1' alone does not create identities. The quadratic/quartic family gave 3n(n+1)-type fractions that look like the 3n family dressed up. Identities come in parametric families (a = 3n + i, b = -n(2n - j); a = 2n + i, b = (n + j)^2), so round 2 searches each known pattern with much wider lower-order coefficients, where variants with other Mobius targets may sit.",
+  "families": [
+    {"name": "r2 2n-type, wide lower terms",
+     "rationale": "2n+1 | n^2 gives 4/pi; widen a0, b0, b1 to +-12 and allow a1 = 1..2, b2 = -1..4 to find other members of this pattern.",
+     "a": [[-12, 12], [1, 2]], "b": [[-12, 12], [-12, 12], [-1, 4]]},
+    {"name": "r2 Euler-type, b2 = 4, wide",
+     "rationale": "Euler's 6 | (2n-1)^2 and the 8 | 4n^2 - 1 hit share b2 = 4; scan constant a up to 30 with b0, b1 in +-25.",
+     "a": [[1, 30]], "b": [[-25, 25], [-25, 25], [4, 4]]},
+    {"name": "r2 3n-type, wide lower terms",
+     "rationale": "The 3n | -2n^2 pattern gave most identities; fix a1 = 3, widen a0 to +-12 and b0, b1 to +-15 with b2 = -3..-1.",
+     "a": [[-12, 12], [3, 3]], "b": [[-15, 15], [-15, 15], [-3, -1]]}
+  ]
+}

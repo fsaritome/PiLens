@@ -36,8 +36,9 @@ expected result, not a failure.
   what a picture of real structure looks like.
 
 So what PiLens gives you is: (1) a lot of pictures of pi, (2) an honest, calibrated
-answer to "is this pattern real?", and (3) the setup for phase 2, where an AI writes
-new lenses and the judge plus your ratings decide which ones are worth keeping.
+answer to "is this pattern real?", and (3) phase 2, which takes the hunt to where pi's
+structure actually is: a Claude-steered search for continued-fraction formulas, checked
+by the same kind of random control (see [Phase 2](#phase-2-the-formula-hunt)).
 
 ## Method
 
@@ -158,7 +159,7 @@ control, every metric's z and p, and 👍/👎 buttons with an optional note. Ra
 appended to `data/ratings.jsonl` together with the lens, its parameters and its scores,
 for phase 2 to use.
 
-## Writing a lens (and phase 2)
+## Writing a lens
 
 A lens is a pure function. Drop a file into `lenses_ext/` and it is picked up by the
 CLI, the judge and the gallery:
@@ -173,12 +174,65 @@ def my_lens(x: np.ndarray, base: int, *, width=128):   # every param has a defau
     return LensResult(img, {"some_feature": float(...)}) # '_name' = informational, not tested
 ```
 
-The rules are in the docstring of [pilens/lenses.py](pilens/lenses.py). Phase 2 (not built
-yet) will have a Claude loop write such files, run `pilens run --lens <new>`, and use
-`data/ratings.jsonl` plus the judge's scores to decide what to try next. The judge's
-multiple-testing correction has to grow with the number of lenses tried, and generated
-lenses must be judged on fresh digits (e.g. digits 10^6 to 2·10^6) rather than the
-digits they were designed on.
+The rules are in the docstring of [pilens/lenses.py](pilens/lenses.py). Generated lenses
+should be judged on fresh digits (e.g. digits 10^6 to 2·10^6) rather than the digits they
+were designed on, and the multiple-testing correction has to grow with every lens tried.
+
+## Phase 2: the formula hunt
+
+Phase 1 showed that the digits of pi look random under every lens. Phase 2 goes where pi
+*does* have structure: exact formulas. It hunts for **continued fractions**
+
+```
+a(0) + b(1)/(a(1) + b(2)/(a(2) + b(3)/(a(3) + ...)))
+```
+
+with integer polynomials a(n), b(n), whose limit is a simple expression in π. A classical
+example is 4/π = 1 + 1²/(3 + 2²/(5 + 3²/(7 + …))), with a(n) = 2n+1 and b(n) = n². This is
+the Ramanujan Machine's idea at a small scale.
+
+**How a hunt works** ([pilens/gcf.py](pilens/gcf.py), [pilens/hunt.py](pilens/hunt.py)):
+
+1. A *family* is a set of coefficient ranges. Every combination is evaluated in float64 to
+   depth 2,000, vectorised over hundreds of thousands of fractions in a few seconds.
+2. Each limit that converges to 7+ digits is compared with a table of
+   (p0 + p1·π)/(q0 + q1·π) for small integers (|coef| ≤ 6, or up to 12).
+3. Each match is **re-computed at 600-bit precision to depth 16,000**. "Verified" means the
+   error keeps shrinking down to 30+ digits (most identities reach the 175-digit precision
+   limit). "Probable" means 8–30 digits with a clean power-law convergence. A coincidence
+   stalls and is rejected.
+4. **Control:** the same search is run against a seeded *random* constant. No polynomial
+   continued fraction should be an exact expression in a random number, so any confirmed
+   hit there would mean the judge is broken. Over 1.5 million fractions it found 2 raw
+   coincidences and confirmed 0.
+5. Results are grouped up to two trivial changes: starting the same fraction a few terms
+   later, and rescaling (a → c·a, b → c²·b).
+
+**The loop** ([pilens/evolve.py](pilens/evolve.py)): `pilens evolve` sends Claude
+(`claude-opus-5-5`, structured output) a summary of every hunt so far, then runs the 1–3
+families it proposes. A round's score is the number of new distinct identities. Proposals
+are plain data (coefficient ranges, size-capped at 400k fractions), never code. Nothing
+depends on human taste: the judge is mechanical, and the 👍/👎 buttons on formula pages are
+optional context for Claude.
+
+```bash
+pilens hunt --preset classic                         # 101k fractions, ~3 s
+pilens hunt --family '{"a": [[-12,12],[3,3]], "b": [[-15,15],[-15,15],[-3,-1]]}' --mobius 12
+pilens hunt --constant e --family '{"a": [[-10,10],[1,4]], "b": [[-25,25],[-25,25]]}'
+pilens evolve --rounds 3                             # needs ANTHROPIC_API_KEY (or `ant auth login`)
+pilens evolve --proposals proposals/round1.json      # same loop, proposals from a file
+pilens serve                                         # then open /formulas
+```
+
+On the formula pages, each hunt shows a *landscape*: the family drawn on its two most
+varied coefficients, with gold cells where identities were found. The control's landscape
+sits next to it and should have no gold.
+
+Honest scope: the identities found are re-discoveries or close relatives of known formulas
+(the 2n+1 | n² family and the 3n | −2n² family both appear in the continued-fraction
+literature and Ramanujan Machine papers). PiLens does not test equivalence beyond shift
+and scaling, so "not marked classical" never means "new". Results so far are in
+[NOTES.md](NOTES.md).
 
 ## Layout
 
@@ -187,10 +241,14 @@ pilens/sources.py   digits, CF, series, controls, planted structure
 pilens/lenses.py    lens interface, registry, plug-in loader, built-in lenses
 pilens/judge.py     metrics, controls, max-T, classifier, BH
 pilens/store.py     run/ratings persistence, PNG rendering
-pilens/server.py    FastAPI gallery
+pilens/gcf.py       continued fractions: fast scan, Mobius tables, deep verification
+pilens/hunt.py      formula hunt with the random-constant control, landscapes
+pilens/evolve.py    Claude loop (claude-opus-5-5) proposing families to hunt
+pilens/server.py    FastAPI gallery (digit lenses + /formulas)
 pilens/cli.py       `pilens` command
+proposals/          proposal files used for the rounds in NOTES.md
 lenses_ext/         plug-in lenses (example: spiral.py)
 scripts/            calibration
 tests/              pytest (-m slow = judge validation)
-data/               cache, runs, ratings (git-ignored)
+data/               cache, runs, hunts, evolve log, ratings (git-ignored)
 ```

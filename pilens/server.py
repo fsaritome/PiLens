@@ -63,7 +63,8 @@ def _rating_counts() -> Counter:
 def index():
     runs = store.list_runs()
     rc = _rating_counts()
-    parts = ["<h1>PiLens gallery</h1><p class='mut'>Each run is one source at one base and length. "
+    parts = ["<div class='nav'><span></span><a href='/formulas'>Formula hunt (phase 2) &rarr;</a></div>"
+             "<h1>PiLens gallery</h1><p class='mut'>Each run is one source at one base and length. "
              "p_lens is the lens-level empirical p-value against random controls; q is the "
              "Benjamini-Hochberg q-value across all lenses of that run. q &lt; 0.05 is highlighted.</p>"]
     if not runs:
@@ -179,3 +180,147 @@ def rate(r: Rating):
 @app.get("/api/ratings")
 def ratings():
     return store.load_ratings()
+
+
+# ---------------------------------------------------------------------------
+# phase 2: formula hunt
+# ---------------------------------------------------------------------------
+
+def _hunt_counts(side: dict) -> str:
+    c = side["count"]
+    return f"{c['verified']} verified, {c['probable']} probable"
+
+
+@app.get("/formulas", response_class=HTMLResponse)
+def formulas_index():
+    from .evolve import history
+    from .hunt import list_hunts
+
+    hunts = list_hunts()
+    rows = []
+    for h in hunts:
+        nh = h["null"]["count"]["verified"] + h["null"]["count"]["probable"]
+        rows.append(f"<tr><td><a href='/formulas/{h['id']}'>{html.escape(h['family']['name'] or h['id'])}</a></td>"
+                    f"<td>{h['n_candidates']:,}</td><td>{h['n_eligible']:,}</td>"
+                    f"<td>{html.escape(h['constant'])}</td><td>{h['target']['matches']}</td>"
+                    f"<td class='sig'>{len(h.get('orbits', []))}</td>"
+                    f"<td>{h['null']['matches']}</td><td>{nh}</td></tr>")
+    by_const: dict[str, dict[str, list]] = {}
+    for h in hunts:
+        for r in h["distinct_relations"]:
+            by_const.setdefault(h["constant"], {}).setdefault(r["orbit"], []).append(r)
+    sections = []
+    for const, orbits in by_const.items():
+        rows_i = []
+        for orbit, rs in sorted(orbits.items(), key=lambda kv: (-len(kv[1]), kv[0])):
+            r = rs[0]
+            rows_i.append(
+                f"<tr><td><code>{html.escape(orbit.split(' | ')[0])}</code></td>"
+                f"<td><code>{html.escape(orbit.split(' | ')[1])}</code></td>"
+                f"<td><b>{html.escape(r['relation'])}</b> <span class='mut'>(e.g. a={html.escape(r['a_str'])}, "
+                f"b={html.escape(r['b_str'])})</span></td><td>{len({x['a_str'] + x['b_str'] for x in rs})}</td>"
+                f"<td>{html.escape(r['status'])}</td><td>{html.escape(r['rate'])}</td>"
+                f"<td>{'classical' if any(x['known'] for x in rs) else ''}</td></tr>")
+        name = "&pi;" if const == "pi" else html.escape(const)
+        sections.append(f"<h2>Distinct identities with {name}: {len(orbits)}</h2><div class='card'><table>"
+                        f"<tr><th>a(n)</th><th>b(n)</th><th>limit</th><th>variants</th><th>status</th>"
+                        f"<th>convergence</th><th></th></tr>{''.join(rows_i)}</table></div>")
+    ident_html = "".join(sections)
+    rounds = "".join(
+        f"<tr><td>{r['round']}</td><td>{html.escape(r['proposer'])}</td><td>{r['score']}</td>"
+        f"<td style='text-align:left'>{html.escape(r['notes'])}</td></tr>" for r in history())
+    body = f"""<div class="nav"><a href="/">&larr; digit lenses (phase 1)</a></div>
+<h1>Formula hunt</h1>
+<p class="mut">Pi's digits look random, but pi has exact formulas. Each hunt evaluates a family of
+continued fractions <code>a(0) + b(1)/(a(1) + b(2)/(a(2) + &hellip;))</code> with polynomial a(n), b(n),
+matches each limit against simple expressions in &pi;, and re-checks every match at 600-bit precision.
+The same search against a <b>random constant</b> is the control: it must stay at zero.</p>
+<h2>Hunts</h2><div class="card"><table><tr><th>family</th><th>fractions</th><th>converged</th>
+<th>constant</th><th>matches</th><th>distinct identities</th><th>control matches</th><th>control confirmed</th></tr>
+{''.join(rows) or '<tr><td>none yet: <code>pilens hunt</code></td></tr>'}</table></div>
+<p class="mut">"Distinct" means different up to two trivial changes: starting the same fraction a few
+terms later (n &rarr; n + k) and rescaling (a &rarr; c&middot;a, b &rarr; c&sup2;&middot;b). Rows can still be
+equivalent through deeper transformations, and "classical" marks only the few formulas in PiLens's own short list,
+so an unmarked row is <i>not</i> a claim of novelty.</p>
+{ident_html}
+<h2>Claude rounds</h2><div class="card"><table><tr><th>round</th><th>proposer</th><th>new identities</th>
+<th style="text-align:left">notes</th></tr>{rounds or '<tr><td>none yet: <code>pilens evolve</code></td></tr>'}</table></div>"""
+    return page("PiLens formula hunt", body)
+
+
+@app.get("/formulas/{hid}", response_class=HTMLResponse)
+def formula_hunt(hid: str):
+    from .hunt import hunts_dir
+
+    f = (hunts_dir() / hid / "hunt.json").resolve()
+    if not f.is_relative_to(hunts_dir().resolve()) or not f.exists():
+        raise HTTPException(404)
+    h = json.loads(f.read_text(encoding="utf-8"))
+    rc = _rating_counts()
+
+    def hit_rows(hits, limit=200):
+        out = []
+        for r in hits[:limit]:
+            key = f"{r['a_str']} | {r['b_str']}"
+            cls = " class='sig'" if r["status"] == "verified" else ""
+            jkey = html.escape(json.dumps(key))
+            out.append(f"<tr><td><code>{html.escape(r['a_str'])}</code></td><td><code>{html.escape(r['b_str'])}</code></td>"
+                       f"<td><b>{html.escape(r['relation'])}</b></td><td{cls}>{r['status']}</td><td>{r['digits']:.0f}</td>"
+                       f"<td>{html.escape(r['rate'])}</td><td style='text-align:left'><code>{html.escape(r['gcf'])}</code></td>"
+                       f"<td><button onclick='rateF(this,{jkey},1)'>&#128077;</button> "
+                       f"<button onclick='rateF(this,{jkey},-1)'>&#128078;</button> "
+                       f"<span class='mut'>{rc[(hid, key, 1)]}/{rc[(hid, key, -1)]}</span></td></tr>")
+        return "".join(out)
+
+    t, n = h["target"], h["null"]
+    body = f"""<div class="nav"><a href="/formulas">&larr; all hunts</a></div>
+<h1>{html.escape(h['family']['name'] or hid)}</h1>
+<p class="mut">a ranges {h['family']['a']}, b ranges {h['family']['b']} (constant term first) &middot;
+{h['n_candidates']:,} fractions &middot; {h['n_eligible']:,} converged to 7+ digits at depth {h['depth']} &middot;
+{h['elapsed_s']}s.</p>
+<div class="pair">
+<figure><img src="/hunt-img/{hid}/landscape_target.png" alt="landscape vs pi"><figcaption>vs &pi;: {t['matches']} matches,
+{_hunt_counts(t)}. x = {html.escape(h.get('landscape_axes', ['?', '?'])[0])}, y (up) =
+{html.escape(h.get('landscape_axes', ['?', '?'])[1])}. Blue brightness = how well fractions converge there,
+gold = an identity was found.</figcaption></figure>
+<figure><img src="/hunt-img/{hid}/landscape_null.png" alt="landscape vs random constant"><figcaption>vs a random
+constant (control): {n['matches']} matches, {_hunt_counts(n)}.</figcaption></figure>
+</div>
+<h2>Identities with &pi; ({len(h['distinct_relations'])} distinct, {len(t['hits'])} checked)</h2>
+<div class="card"><table><tr><th>a(n)</th><th>b(n)</th><th>limit</th><th>status</th><th>digits</th><th>convergence</th>
+<th style="text-align:left">first terms</th><th>rate it</th></tr>{hit_rows(t['hits'])}</table></div>
+<h2>Control matches (random constant)</h2>
+<div class="card"><table><tr><th>a(n)</th><th>b(n)</th><th>limit</th><th>status</th><th>digits</th><th>convergence</th>
+<th style="text-align:left">first terms</th><th></th></tr>{hit_rows(n['hits'], 50) or '<tr><td>none</td></tr>'}</table></div>
+<script>
+async function rateF(btn,key,v){{
+  const r=await fetch('/api/rate-formula',{{method:'POST',headers:{{'Content-Type':'application/json'}},
+    body:JSON.stringify({{run:{json.dumps(hid)},key:key,rating:v}})}});
+  const j=await r.json(); btn.parentElement.querySelector('span').textContent=j.up+'/'+j.down;
+}}
+</script>"""
+    return page(f"{hid} · formula hunt", body)
+
+
+@app.get("/hunt-img/{hid}/{name}")
+def hunt_img(hid: str, name: str):
+    from .hunt import hunts_dir
+
+    f = (hunts_dir() / hid / name).resolve()
+    if not f.is_relative_to(hunts_dir().resolve()) or not f.exists() or f.suffix != ".png":
+        raise HTTPException(404)
+    return FileResponse(f, media_type="image/png")
+
+
+@app.post("/api/rate-formula")
+def rate_formula(r: Rating):
+    from .hunt import hunts_dir
+
+    if r.rating not in (1, -1):
+        raise HTTPException(400, "rating must be 1 or -1")
+    f = (hunts_dir() / r.run / "hunt.json").resolve()
+    if not f.is_relative_to(hunts_dir().resolve()) or not f.exists():
+        raise HTTPException(404)
+    store.add_rating(r.run, r.key, r.rating, r.note, {"kind": "formula"})
+    c = _rating_counts()
+    return {"ok": True, "up": c[(r.run, r.key, 1)], "down": c[(r.run, r.key, -1)]}
