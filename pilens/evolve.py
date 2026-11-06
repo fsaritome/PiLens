@@ -138,20 +138,24 @@ def summary_for_prompt(max_identities: int = 80, detailed_hunts: int = 30) -> st
 LAST_USAGE: dict = {}
 PRICE_IN, PRICE_OUT = 4.0, 20.0  # USD per million tokens, claude-opus-5-5
 EFFORT = "high"
+MAX_TOKENS = 32000  # 16000 cut off ~15% of answers (stop_reason=max_tokens)
 
 
 def propose_api(summary: str) -> Proposal:
     import anthropic
 
     client = anthropic.Anthropic()
-    resp = client.messages.parse(
+    # Streamed: with high effort an answer can be long, and the SDK refuses non-streamed
+    # requests whose max_tokens could take more than ~10 minutes.
+    with client.messages.stream(
         model=MODEL,
-        max_tokens=16000,
+        max_tokens=MAX_TOKENS,
         system=SYSTEM,
         output_config={"effort": EFFORT},
         messages=[{"role": "user", "content": summary + "\n\nPropose the next 1-3 families."}],
         output_format=Proposal,
-    )
+    ) as stream:
+        resp = stream.get_final_message()
     u = resp.usage
     LAST_USAGE.clear()
     LAST_USAGE.update(input_tokens=u.input_tokens, output_tokens=u.output_tokens,
@@ -228,10 +232,10 @@ def run_budget(budget_usd: float, max_rounds: int = 1000, log=print) -> float:
     """Run API rounds until the estimated spend of this run reaches ``budget_usd``.
 
     Stops early enough that the next round cannot overshoot (one call is capped at
-    16k output tokens, about $0.35 plus input). Returns the estimated spend.
+    MAX_TOKENS output tokens plus input). Returns the estimated spend.
     """
     spent, failures = 0.0, 0
-    reserve = 0.6
+    reserve = round(MAX_TOKENS * PRICE_OUT / 1e6 + 0.15, 2)  # worst case for one call
     for i in range(max_rounds):
         if spent + reserve > budget_usd:
             log(f"budget reached: ~${spent:.2f} of ${budget_usd:.2f}")
