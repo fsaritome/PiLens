@@ -209,8 +209,10 @@ const palette = B => {{
 function traces(x, n, hz) {{
   const B = D.base, X = [], Y = [], Z = [], C = [];
   for (let i = 0; i < n; i++) {{
-    const t0 = 2 * Math.PI * (x[i] + 0.08 + 0.84 * i / n) / B;
-    const t1 = 2 * Math.PI * (x[i + 1] + 0.08 + 0.84 * (i + 1) / n) / B;
+    // fixed point per symbol: height already shows the order, so the flat diagram's slow
+    // drift of endpoints across each sector (which would look like a twist) is left out
+    const t0 = 2 * Math.PI * (x[i] + 0.5) / B;
+    const t1 = 2 * Math.PI * (x[i + 1] + 0.5) / B;
     const ax = Math.cos(t0), ay = Math.sin(t0), bx = Math.cos(t1), by = Math.sin(t1);
     for (let s = 0; s <= S; s++) {{
       const t = s / S, u = 1 - t;

@@ -18,7 +18,7 @@ button.up:hover{border-color:var(--good)}button.down:hover{border-color:var(--ba
 .nav{display:flex;justify-content:space-between;gap:10px;margin-top:6px}.thumbs{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
 .thumbs a{display:block;background:var(--card);border:1px solid var(--line);border-radius:8px;padding:6px;font-size:13px;color:var(--fg)}.thumbs img{width:100%;aspect-ratio:1;object-fit:contain;image-rendering:pixelated}
 code{font-size:13px}
-#rate,button[onclick^='rateF']{display:none!important}.snapshot{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:6px 10px;font-size:13px;color:var(--mut);margin-bottom:10px}</style></head><body><main><div class='snapshot'>Read-only snapshot of the PiLens gallery, exported 2026-11-06 16:07. Code and how to run it yourself: <a href='https://github.com/fsaritome/PiLens'>github.com/fsaritome/PiLens</a>.</div><div class="nav"><a href="../index.html">&larr; back to the flat chord diagram</a></div>
+#rate,button[onclick^='rateF']{display:none!important}.snapshot{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:6px 10px;font-size:13px;color:var(--mut);margin-bottom:10px}</style></head><body><main><div class='snapshot'>Read-only snapshot of the PiLens gallery, exported 2026-11-06 16:21. Code and how to run it yourself: <a href='https://github.com/fsaritome/PiLens'>github.com/fsaritome/PiLens</a>.</div><div class="nav"><a href="../index.html">&larr; back to the flat chord diagram</a></div>
 <h1>Chords in 3D <span class="mut">pi, base 10</span></h1>
 <p class="mut">Same picture as the flat chord diagram: the 10 symbols sit around a ring, and each pair of
 consecutive symbols is joined by a curve through the middle. Here every chord is also <b>lifted to its position in
@@ -51,8 +51,10 @@ const palette = B => {
 function traces(x, n, hz) {
   const B = D.base, X = [], Y = [], Z = [], C = [];
   for (let i = 0; i < n; i++) {
-    const t0 = 2 * Math.PI * (x[i] + 0.08 + 0.84 * i / n) / B;
-    const t1 = 2 * Math.PI * (x[i + 1] + 0.08 + 0.84 * (i + 1) / n) / B;
+    // fixed point per symbol: height already shows the order, so the flat diagram's slow
+    // drift of endpoints across each sector (which would look like a twist) is left out
+    const t0 = 2 * Math.PI * (x[i] + 0.5) / B;
+    const t1 = 2 * Math.PI * (x[i + 1] + 0.5) / B;
     const ax = Math.cos(t0), ay = Math.sin(t0), bx = Math.cos(t1), by = Math.sin(t1);
     for (let s = 0; s <= S; s++) {
       const t = s / S, u = 1 - t;
