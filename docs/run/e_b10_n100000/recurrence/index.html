@@ -1,0 +1,50 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1"><title>recurrence · e_b10_n100000</title>
+<style>
+:root{--bg:#fbfaf7;--fg:#1d1d1f;--mut:#6b6b70;--card:#fff;--line:#e4e2dc;--acc:#b4441c;--good:#2f7d32;--bad:#b3261e}
+@media (prefers-color-scheme:dark){:root{--bg:#141416;--fg:#ececec;--mut:#9a9aa0;--card:#1d1d20;--line:#2d2d31;--acc:#f08a5d;--good:#7bc47f;--bad:#f2867e}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.5 system-ui,-apple-system,Segoe UI,sans-serif}
+main{max-width:1180px;margin:0 auto;padding:20px 16px 60px}a{color:var(--acc);text-decoration:none}a:hover{text-decoration:underline}
+h1{font-size:22px;margin:0 0 4px}h2{font-size:17px;margin:28px 0 8px}.mut{color:var(--mut)}
+table{border-collapse:collapse;width:100%;font-variant-numeric:tabular-nums}th,td{padding:5px 8px;border-bottom:1px solid var(--line);text-align:right}
+th:first-child,td:first-child{text-align:left}th{font-weight:600;color:var(--mut);font-size:13px}
+.sig{color:var(--acc);font-weight:600}.pair{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:14px 0}
+@media (max-width:700px){.pair{grid-template-columns:1fr}}
+figure{margin:0;background:var(--card);border:1px solid var(--line);border-radius:10px;padding:10px}
+figure img{width:100%;image-rendering:pixelated;border-radius:4px;display:block}figcaption{font-size:13px;color:var(--mut);margin-top:6px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:12px 14px;margin:12px 0;overflow-x:auto}
+.rate{display:flex;gap:10px;align-items:center;flex-wrap:wrap}button{font:inherit;padding:7px 14px;border-radius:8px;border:1px solid var(--line);background:var(--card);color:var(--fg);cursor:pointer}
+button.up:hover{border-color:var(--good)}button.down:hover{border-color:var(--bad)}input[type=text]{font:inherit;padding:7px 10px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--fg);min-width:220px;flex:1}
+.nav{display:flex;justify-content:space-between;gap:10px;margin-top:6px}.thumbs{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
+.thumbs a{display:block;background:var(--card);border:1px solid var(--line);border-radius:8px;padding:6px;font-size:13px;color:var(--fg)}.thumbs img{width:100%;aspect-ratio:1;object-fit:contain;image-rendering:pixelated}
+code{font-size:13px}
+#rate,button[onclick^='rateF']{display:none!important}.snapshot{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:6px 10px;font-size:13px;color:var(--mut);margin-bottom:10px}</style></head><body><main><div class='snapshot'>Read-only snapshot of the PiLens gallery, exported 2026-11-06 12:40. Code and how to run it yourself: <a href='https://github.com/fsaritome/PiLens'>github.com/fsaritome/PiLens</a>.</div>
+<div class="nav"><a href="../../../index.html">&larr; all runs</a><span><a href="../pairs/index.html">&lsaquo; pairs</a> &nbsp;
+<a href="../spiral/index.html">spiral &rsaquo;</a></span></div>
+<h1>recurrence <span class="mut">on e, base 10, n = 100,000</span></h1>
+<p class="mut">Verdict: indistinguishable from random controls. p_maxT = 0.950; classifier accuracy 0.52 (chance 0.5), p = 0.387; p_lens = 0.774;
+q (BH over 7 lens(es) in this run) = 0.922; 500 controls.</p>
+<div class="pair">
+<figure><img src="../../../img/e_b10_n100000/recurrence_pi.png" alt="lens on e"><figcaption>e</figcaption></figure>
+<figure><img src="../../../img/e_b10_n100000/recurrence_ctrl.png" alt="lens on a random control"><figcaption>random control (same n, base, null)</figcaption></figure>
+</div>
+<div class="card rate" id="rate">
+<span>Does this lens show anything interesting?</span>
+<button class="up" onclick="rate(1)">&#128077; yes</button><button class="down" onclick="rate(-1)">&#128078; no</button>
+<input type="text" id="note" placeholder="optional note (what do you see?)">
+<span class="mut" id="counts">0&#128077; 0&#128078;</span>
+</div>
+<div class="card"><table><tr><th>metric</th><th>e</th><th>controls mean &plusmn; sd</th><th>z</th><th>p (two-sided)</th></tr>
+<tr><td>determinism</td><td>0.1923</td><td>0.1880 &plusmn; 0.005</td><td>+0.92</td><td>0.367</td></tr><tr><td>fft_slope</td><td>-0.6972</td><td>-0.6835 &plusmn; 0.017</td><td>-0.79</td><td>0.419</td></tr><tr><td>fft_peak_log10</td><td>3.7946</td><td>3.8010 &plusmn; 0.008</td><td>-0.76</td><td>0.453</td></tr><tr><td>lag_max_abs_z</td><td>2.8947</td><td>2.5995 &plusmn; 0.411</td><td>+0.72</td><td>0.477</td></tr><tr><td>recurrence_rate</td><td>0.0099</td><td>0.0100 &plusmn; 9.07e-05</td><td>-0.71</td><td>0.477</td></tr><tr><td>fft_flatness</td><td>0.0354</td><td>0.0351 &plusmn; 0.000448</td><td>+0.70</td><td>0.473</td></tr><tr><td>lag1_match_z</td><td>0.5621</td><td>0.0063 &plusmn; 0.997</td><td>+0.56</td><td>0.569</td></tr><tr><td>img_entropy_bits</td><td>1.2106</td><td>1.2116 &plusmn; 0.006</td><td>-0.16</td><td>0.862</td></tr><tr><td>img_compress_ratio</td><td>0.2314</td><td>0.2314 &plusmn; 0.001</td><td>+0.06</td><td>0.956</td></tr></table></div>
+<p class="mut">Params: <code>{&quot;block&quot;: 256, &quot;n_blocks&quot;: 40, &quot;embed&quot;: 2, &quot;max_lag&quot;: 64}</code>. Saved 2026-11-06 09:27:26,
+4s.</p>
+<script>
+async function rate(v){
+  const note=document.getElementById('note').value;
+  const res=await fetch('/api/rate',{method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({run:"e_b10_n100000",key:"recurrence",rating:v,note:note})});
+  const j=await res.json();
+  document.getElementById('counts').textContent=j.up+'\u{1F44D} '+j.down+'\u{1F44E} saved';
+  document.getElementById('note').value='';
+}
+</script></main></body></html>

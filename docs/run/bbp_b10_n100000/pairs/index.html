@@ -1,0 +1,50 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1"><title>pairs · bbp_b10_n100000</title>
+<style>
+:root{--bg:#fbfaf7;--fg:#1d1d1f;--mut:#6b6b70;--card:#fff;--line:#e4e2dc;--acc:#b4441c;--good:#2f7d32;--bad:#b3261e}
+@media (prefers-color-scheme:dark){:root{--bg:#141416;--fg:#ececec;--mut:#9a9aa0;--card:#1d1d20;--line:#2d2d31;--acc:#f08a5d;--good:#7bc47f;--bad:#f2867e}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.5 system-ui,-apple-system,Segoe UI,sans-serif}
+main{max-width:1180px;margin:0 auto;padding:20px 16px 60px}a{color:var(--acc);text-decoration:none}a:hover{text-decoration:underline}
+h1{font-size:22px;margin:0 0 4px}h2{font-size:17px;margin:28px 0 8px}.mut{color:var(--mut)}
+table{border-collapse:collapse;width:100%;font-variant-numeric:tabular-nums}th,td{padding:5px 8px;border-bottom:1px solid var(--line);text-align:right}
+th:first-child,td:first-child{text-align:left}th{font-weight:600;color:var(--mut);font-size:13px}
+.sig{color:var(--acc);font-weight:600}.pair{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:14px 0}
+@media (max-width:700px){.pair{grid-template-columns:1fr}}
+figure{margin:0;background:var(--card);border:1px solid var(--line);border-radius:10px;padding:10px}
+figure img{width:100%;image-rendering:pixelated;border-radius:4px;display:block}figcaption{font-size:13px;color:var(--mut);margin-top:6px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:12px 14px;margin:12px 0;overflow-x:auto}
+.rate{display:flex;gap:10px;align-items:center;flex-wrap:wrap}button{font:inherit;padding:7px 14px;border-radius:8px;border:1px solid var(--line);background:var(--card);color:var(--fg);cursor:pointer}
+button.up:hover{border-color:var(--good)}button.down:hover{border-color:var(--bad)}input[type=text]{font:inherit;padding:7px 10px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--fg);min-width:220px;flex:1}
+.nav{display:flex;justify-content:space-between;gap:10px;margin-top:6px}.thumbs{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
+.thumbs a{display:block;background:var(--card);border:1px solid var(--line);border-radius:8px;padding:6px;font-size:13px;color:var(--fg)}.thumbs img{width:100%;aspect-ratio:1;object-fit:contain;image-rendering:pixelated}
+code{font-size:13px}
+#rate,button[onclick^='rateF']{display:none!important}.snapshot{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:6px 10px;font-size:13px;color:var(--mut);margin-bottom:10px}</style></head><body><main><div class='snapshot'>Read-only snapshot of the PiLens gallery, exported 2026-11-06 12:40. Code and how to run it yourself: <a href='https://github.com/fsaritome/PiLens'>github.com/fsaritome/PiLens</a>.</div>
+<div class="nav"><a href="../../../index.html">&larr; all runs</a><span><a href="../grid/index.html">&lsaquo; grid</a> &nbsp;
+<a href="../recurrence/index.html">recurrence &rsaquo;</a></span></div>
+<h1>pairs <span class="mut">on bbp, base 10, n = 100,000</span></h1>
+<p class="mut">Verdict: <span class='sig'>differs from random controls after correction</span>. p_maxT = 0.003; classifier accuracy 1.00 (chance 0.5), p = 0.003; p_lens = 0.007;
+q (BH over 7 lens(es) in this run) = 0.007; 300 controls.</p>
+<div class="pair">
+<figure><img src="../../../img/bbp_b10_n100000/pairs_pi.png" alt="lens on bbp"><figcaption>bbp</figcaption></figure>
+<figure><img src="../../../img/bbp_b10_n100000/pairs_ctrl.png" alt="lens on a random control"><figcaption>random control (same n, base, null)</figcaption></figure>
+</div>
+<div class="card rate" id="rate">
+<span>Does this lens show anything interesting?</span>
+<button class="up" onclick="rate(1)">&#128077; yes</button><button class="down" onclick="rate(-1)">&#128078; no</button>
+<input type="text" id="note" placeholder="optional note (what do you see?)">
+<span class="mut" id="counts">0&#128077; 0&#128078;</span>
+</div>
+<div class="card"><table><tr><th>metric</th><th>bbp</th><th>controls mean &plusmn; sd</th><th>z</th><th>p (two-sided)</th></tr>
+<tr><td>diff_entropy_bits</td><td>0.2525</td><td>3.3219 &plusmn; 3.35e-05</td><td class='sig'>-91497.83</td><td>0.003</td></tr><tr><td>pair_max_z</td><td>58221.7516</td><td>1.4828 &plusmn; 0.899</td><td class='sig'>+64728.25</td><td>0.003</td></tr><tr><td>pair_lag1_z</td><td>58221.7516</td><td>0.0713 &plusmn; 1.175</td><td class='sig'>+49552.59</td><td>0.003</td></tr><tr><td>diff0_rate</td><td>0.0000</td><td>0.1000 &plusmn; 0.000913</td><td class='sig'>-109.54</td><td>0.003</td></tr><tr><td>img_compress_ratio</td><td>0.0513</td><td>0.1114 &plusmn; 0.000863</td><td class='sig'>-69.60</td><td>0.003</td></tr><tr><td>img_entropy_bits</td><td>0.7070</td><td>5.0063 &plusmn; 0.065</td><td class='sig'>-65.85</td><td>0.003</td></tr><tr><td>fft_flatness</td><td>0.0119</td><td>0.0719 &plusmn; 0.006</td><td class='sig'>-10.10</td><td>0.003</td></tr><tr><td>fft_peak_log10</td><td>4.6776</td><td>3.3513 &plusmn; 0.203</td><td class='sig'>+6.54</td><td>0.003</td></tr><tr><td>symbol_entropy_bits</td><td>3.3219</td><td>3.3219 &plusmn; 3.28e-05</td><td>+2.03</td><td>0.037</td></tr><tr><td>fft_slope</td><td>-0.1142</td><td>-0.6519 &plusmn; 0.355</td><td>+1.51</td><td>0.143</td></tr></table></div>
+<p class="mut">Params: <code>{&quot;max_lag&quot;: 8, &quot;cell&quot;: 0}</code>. Saved 2026-11-06 09:29:19,
+1s.</p>
+<script>
+async function rate(v){
+  const note=document.getElementById('note').value;
+  const res=await fetch('/api/rate',{method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({run:"bbp_b10_n100000",key:"pairs",rating:v,note:note})});
+  const j=await res.json();
+  document.getElementById('counts').textContent=j.up+'\u{1F44D} '+j.down+'\u{1F44E} saved';
+  document.getElementById('note').value='';
+}
+</script></main></body></html>

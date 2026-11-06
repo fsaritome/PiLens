@@ -1,0 +1,50 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1"><title>walk · planted_markov_0.01_b10_n100000</title>
+<style>
+:root{--bg:#fbfaf7;--fg:#1d1d1f;--mut:#6b6b70;--card:#fff;--line:#e4e2dc;--acc:#b4441c;--good:#2f7d32;--bad:#b3261e}
+@media (prefers-color-scheme:dark){:root{--bg:#141416;--fg:#ececec;--mut:#9a9aa0;--card:#1d1d20;--line:#2d2d31;--acc:#f08a5d;--good:#7bc47f;--bad:#f2867e}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.5 system-ui,-apple-system,Segoe UI,sans-serif}
+main{max-width:1180px;margin:0 auto;padding:20px 16px 60px}a{color:var(--acc);text-decoration:none}a:hover{text-decoration:underline}
+h1{font-size:22px;margin:0 0 4px}h2{font-size:17px;margin:28px 0 8px}.mut{color:var(--mut)}
+table{border-collapse:collapse;width:100%;font-variant-numeric:tabular-nums}th,td{padding:5px 8px;border-bottom:1px solid var(--line);text-align:right}
+th:first-child,td:first-child{text-align:left}th{font-weight:600;color:var(--mut);font-size:13px}
+.sig{color:var(--acc);font-weight:600}.pair{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:14px 0}
+@media (max-width:700px){.pair{grid-template-columns:1fr}}
+figure{margin:0;background:var(--card);border:1px solid var(--line);border-radius:10px;padding:10px}
+figure img{width:100%;image-rendering:pixelated;border-radius:4px;display:block}figcaption{font-size:13px;color:var(--mut);margin-top:6px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:12px 14px;margin:12px 0;overflow-x:auto}
+.rate{display:flex;gap:10px;align-items:center;flex-wrap:wrap}button{font:inherit;padding:7px 14px;border-radius:8px;border:1px solid var(--line);background:var(--card);color:var(--fg);cursor:pointer}
+button.up:hover{border-color:var(--good)}button.down:hover{border-color:var(--bad)}input[type=text]{font:inherit;padding:7px 10px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--fg);min-width:220px;flex:1}
+.nav{display:flex;justify-content:space-between;gap:10px;margin-top:6px}.thumbs{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
+.thumbs a{display:block;background:var(--card);border:1px solid var(--line);border-radius:8px;padding:6px;font-size:13px;color:var(--fg)}.thumbs img{width:100%;aspect-ratio:1;object-fit:contain;image-rendering:pixelated}
+code{font-size:13px}
+#rate,button[onclick^='rateF']{display:none!important}.snapshot{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:6px 10px;font-size:13px;color:var(--mut);margin-bottom:10px}</style></head><body><main><div class='snapshot'>Read-only snapshot of the PiLens gallery, exported 2026-11-06 12:40. Code and how to run it yourself: <a href='https://github.com/fsaritome/PiLens'>github.com/fsaritome/PiLens</a>.</div>
+<div class="nav"><a href="../../../index.html">&larr; all runs</a><span><a href="../spiral/index.html">&lsaquo; spiral</a> &nbsp;
+<a href="../chord/index.html">chord &rsaquo;</a></span></div>
+<h1>walk <span class="mut">on planted_markov_0.01, base 10, n = 100,000</span></h1>
+<p class="mut">Verdict: indistinguishable from random controls. p_maxT = 0.764; classifier accuracy 0.56 (chance 0.5), p = 0.224; p_lens = 0.447;
+q (BH over 7 lens(es) in this run) = 0.447; 500 controls.</p>
+<div class="pair">
+<figure><img src="../../../img/planted_markov_0.01_b10_n100000/walk_pi.png" alt="lens on planted_markov_0.01"><figcaption>planted_markov_0.01</figcaption></figure>
+<figure><img src="../../../img/planted_markov_0.01_b10_n100000/walk_ctrl.png" alt="lens on a random control"><figcaption>random control (same n, base, null)</figcaption></figure>
+</div>
+<div class="card rate" id="rate">
+<span>Does this lens show anything interesting?</span>
+<button class="up" onclick="rate(1)">&#128077; yes</button><button class="down" onclick="rate(-1)">&#128078; no</button>
+<input type="text" id="note" placeholder="optional note (what do you see?)">
+<span class="mut" id="counts">0&#128077; 0&#128078;</span>
+</div>
+<div class="card"><table><tr><th>metric</th><th>planted_markov_0.01</th><th>controls mean &plusmn; sd</th><th>z</th><th>p (two-sided)</th></tr>
+<tr><td>nu</td><td>0.5205</td><td>0.4976 &plusmn; 0.019</td><td>+1.18</td><td>0.202</td></tr><tr><td>end_to_end_norm</td><td>0.4576</td><td>0.9068 &plusmn; 0.492</td><td>-0.91</td><td>0.379</td></tr><tr><td>fft_slope</td><td>-2.2537</td><td>-2.2184 &plusmn; 0.052</td><td>-0.68</td><td>0.473</td></tr><tr><td>self_intersection</td><td>0.7466</td><td>0.7614 &plusmn; 0.023</td><td>-0.66</td><td>0.483</td></tr><tr><td>asphericity</td><td>0.2771</td><td>0.4047 &plusmn; 0.240</td><td>-0.53</td><td>0.675</td></tr><tr><td>fft_flatness</td><td>0.1012</td><td>0.1072 &plusmn; 0.012</td><td>-0.49</td><td>0.593</td></tr><tr><td>fft_peak_log10</td><td>4.0908</td><td>4.1732 &plusmn; 0.181</td><td>-0.45</td><td>0.685</td></tr><tr><td>img_entropy_bits</td><td>1.0353</td><td>1.0990 &plusmn; 0.231</td><td>-0.28</td><td>0.788</td></tr><tr><td>img_compress_ratio</td><td>0.1818</td><td>0.1969 &plusmn; 0.056</td><td>-0.27</td><td>0.792</td></tr><tr><td>rg_norm</td><td>0.4239</td><td>0.3925 &plusmn; 0.122</td><td>+0.26</td><td>0.800</td></tr></table></div>
+<p class="mut">Params: <code>{&quot;px&quot;: 512}</code>. Saved 2026-11-06 09:29:32,
+8s.</p>
+<script>
+async function rate(v){
+  const note=document.getElementById('note').value;
+  const res=await fetch('/api/rate',{method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({run:"planted_markov_0.01_b10_n100000",key:"walk",rating:v,note:note})});
+  const j=await res.json();
+  document.getElementById('counts').textContent=j.up+'\u{1F44D} '+j.down+'\u{1F44E} saved';
+  document.getElementById('note').value='';
+}
+</script></main></body></html>

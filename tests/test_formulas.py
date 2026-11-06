@@ -118,3 +118,14 @@ def test_novelty_sequences_and_lookup(tmp_path):
             return []
 
     assert nv.check_core((1, 2), (0, 0, 1), "pi", Empty(cache=tmp_path / "c.json"))["status"] == "not in OEIS"
+
+
+def test_export_site(tmp_path):
+    from pilens.export import _relink, export_site
+
+    assert _relink('<a href="/formulas/x">', "formulas/index.html") == '<a href="x/index.html">'
+    assert _relink("<img src='/hunt-img/h/l.png'>", "formulas/h/index.html") == "<img src='../../hunt-img/h/l.png'>"
+    assert _relink('<a href="https://oeis.org/A1">', "index.html") == '<a href="https://oeis.org/A1">'
+    n = export_site(tmp_path / "site", log=lambda *a: None)
+    assert n > 3 and (tmp_path / "site" / "index.html").exists() and (tmp_path / "site" / "formulas" / "index.html").exists()
+    assert 'href="/' not in (tmp_path / "site" / "formulas" / "index.html").read_text(encoding="utf-8")

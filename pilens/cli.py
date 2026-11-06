@@ -6,6 +6,7 @@ import argparse
 import ast
 import sys
 import time
+from pathlib import Path
 
 from . import sources
 from .judge import bh, default_jobs, judge
@@ -119,6 +120,12 @@ def cmd_novelty(a) -> None:
     run_check(consts, recheck=a.recheck)
 
 
+def cmd_export_site(a) -> None:
+    from .export import export_site
+
+    export_site(Path(a.out))
+
+
 def cmd_serve(a) -> None:
     import uvicorn
 
@@ -195,6 +202,10 @@ def main(argv=None) -> None:
     nv.add_argument("--constant", default="all", help="pi | e | comma list | all")
     nv.add_argument("--recheck", action="store_true", help="look up cores already checked again")
     nv.set_defaults(fn=cmd_novelty)
+
+    ex = sub.add_parser("export-site", help="save the gallery as a static read-only website (GitHub Pages)")
+    ex.add_argument("--out", default="docs")
+    ex.set_defaults(fn=cmd_export_site)
 
     sv = sub.add_parser("serve", help="web gallery with thumbs up/down ratings")
     sv.add_argument("--host", default="127.0.0.1")

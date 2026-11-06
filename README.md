@@ -3,6 +3,10 @@
 *Look at the digits of pi through many "lenses", and check honestly whether any picture
 shows something that random digits don't.*
 
+**Browse the results:** https://fsaritome.github.io/PiLens/ (a read-only snapshot of the
+gallery; the [formula hunt](https://fsaritome.github.io/PiLens/formulas/index.html) has
+maps and 3D views of every hunt).
+
 ## The idea
 
 Written out, pi is an endless string of digits. The hunch behind this project: arrange
@@ -222,6 +226,8 @@ pilens hunt --constant e --family '{"a": [[-10,10],[1,4]], "b": [[-25,25],[-25,2
 pilens evolve --rounds 3                             # needs ANTHROPIC_API_KEY (or `ant auth login`)
 pilens evolve --proposals proposals/round1.json      # same loop, proposals from a file
 pilens serve                                         # then open /formulas
+pilens novelty                                       # look found identities up in the OEIS
+pilens export-site --out docs                        # static snapshot for GitHub Pages
 ```
 
 On the formula pages, each hunt shows a *landscape*: the family drawn on its two most

@@ -1,0 +1,75 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1"><title>pi_ec00dfea · 3D</title>
+<style>
+:root{--bg:#fbfaf7;--fg:#1d1d1f;--mut:#6b6b70;--card:#fff;--line:#e4e2dc;--acc:#b4441c;--good:#2f7d32;--bad:#b3261e}
+@media (prefers-color-scheme:dark){:root{--bg:#141416;--fg:#ececec;--mut:#9a9aa0;--card:#1d1d20;--line:#2d2d31;--acc:#f08a5d;--good:#7bc47f;--bad:#f2867e}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.5 system-ui,-apple-system,Segoe UI,sans-serif}
+main{max-width:1180px;margin:0 auto;padding:20px 16px 60px}a{color:var(--acc);text-decoration:none}a:hover{text-decoration:underline}
+h1{font-size:22px;margin:0 0 4px}h2{font-size:17px;margin:28px 0 8px}.mut{color:var(--mut)}
+table{border-collapse:collapse;width:100%;font-variant-numeric:tabular-nums}th,td{padding:5px 8px;border-bottom:1px solid var(--line);text-align:right}
+th:first-child,td:first-child{text-align:left}th{font-weight:600;color:var(--mut);font-size:13px}
+.sig{color:var(--acc);font-weight:600}.pair{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:14px 0}
+@media (max-width:700px){.pair{grid-template-columns:1fr}}
+figure{margin:0;background:var(--card);border:1px solid var(--line);border-radius:10px;padding:10px}
+figure img{width:100%;image-rendering:pixelated;border-radius:4px;display:block}figcaption{font-size:13px;color:var(--mut);margin-top:6px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:12px 14px;margin:12px 0;overflow-x:auto}
+.rate{display:flex;gap:10px;align-items:center;flex-wrap:wrap}button{font:inherit;padding:7px 14px;border-radius:8px;border:1px solid var(--line);background:var(--card);color:var(--fg);cursor:pointer}
+button.up:hover{border-color:var(--good)}button.down:hover{border-color:var(--bad)}input[type=text]{font:inherit;padding:7px 10px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--fg);min-width:220px;flex:1}
+.nav{display:flex;justify-content:space-between;gap:10px;margin-top:6px}.thumbs{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
+.thumbs a{display:block;background:var(--card);border:1px solid var(--line);border-radius:8px;padding:6px;font-size:13px;color:var(--fg)}.thumbs img{width:100%;aspect-ratio:1;object-fit:contain;image-rendering:pixelated}
+code{font-size:13px}
+#rate,button[onclick^='rateF']{display:none!important}.snapshot{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:6px 10px;font-size:13px;color:var(--mut);margin-bottom:10px}</style></head><body><main><div class='snapshot'>Read-only snapshot of the PiLens gallery, exported 2026-11-06 12:40. Code and how to run it yourself: <a href='https://github.com/fsaritome/PiLens'>github.com/fsaritome/PiLens</a>.</div><div class="nav"><a href="../index.html">&larr; back to the flat maps</a></div>
+<h1>third-scale (9,-18), b3=-15 slice with nonzero b0: 3D view</h1>
+<p class="mut">Every rule this hunt tried is a point in a box of whole-number settings (the grey frame). The
+<b class="sig">coloured dots</b> are the rules whose fraction turned out to equal a formula in π; with more
+than three settings, the colour shows a fourth one. Bright red crosses would be hits on the random control number
+(there should be none). Drag to rotate, scroll to zoom, hover a dot for its formula. The grey shadows on the
+walls are what the flat maps show: a 3D trail seen from one side.</p>
+<div class="card" style="display:flex;gap:12px;flex-wrap:wrap;align-items:center">
+<label>x <select id="ax0"></select></label><label>y <select id="ax1"></select></label>
+<label>z <select id="ax2"></select></label><label>colour <select id="ax3"></select></label>
+<span class="mut">1 π hits, 0 control hits, 5 settings vary in this hunt</span></div>
+<div id="plot" class="card" style="height:640px;padding:0;overflow:hidden"></div>
+<script src="https://cdn.jsdelivr.net/npm/plotly.js-dist-min@2.35.2/plotly.min.js"></script>
+<script>
+const D = {"dims": [{"side": "a", "k": 0, "label": "constant term of a(n)", "lo": -6, "hi": 6}, {"side": "a", "k": 1, "label": "coefficient of n^1 in a(n)", "lo": 8, "hi": 18}, {"side": "b", "k": 0, "label": "constant term of b(n)", "lo": -3, "hi": 3}, {"side": "b", "k": 1, "label": "coefficient of n^1 in b(n)", "lo": -10, "hi": 10}, {"side": "b", "k": 2, "label": "coefficient of n^2 in b(n)", "lo": -10, "hi": 8}], "target": [{"a": [6, 15, 9], "b": [0, 2, 1, -15, -18], "txt": "a(n) = 9n^2+15n+6<br>b(n) = -18n^4-15n^3+n^2+2n<br>limit: -4/(π - 4)<br>verified, 176 digits"}], "null": [], "order": [0, 1, 2, 3, 4]};
+const sel = [0,1,2,3].map(i => document.getElementById('ax'+i));
+sel.forEach((s, i) => {
+  if (i === 3) s.add(new Option('(none)', -1));
+  D.dims.forEach((d, j) => s.add(new Option(d.label, j)));
+  s.value = i < 3 ? (D.order[i] ?? D.order.at(-1) ?? 0) : (D.order[3] ?? -1);
+  s.onchange = draw;
+});
+const coef = (p, d) => (p[d.side][d.k] ?? 0);
+function draw() {
+  const ax = sel.map(s => +s.value);
+  const css = getComputedStyle(document.body);
+  const fg = css.color, line = css.getPropertyValue('--line').trim() || '#888';
+  const [dx, dy, dz] = ax.slice(0, 3).map(i => D.dims[i]);
+  const dc = ax[3] >= 0 ? D.dims[ax[3]] : null;
+  const pts = (P, name, color) => ({
+    type: 'scatter3d', mode: 'markers', name,
+    x: P.map(p => coef(p, dx)), y: P.map(p => coef(p, dy)), z: P.map(p => coef(p, dz)),
+    text: P.map(p => p.txt), hovertemplate: '%{text}<extra></extra>',
+    marker: {size: 6, line: {width: 0}, symbol: color === 'gold' ? 'circle' : 'cross',
+      color: dc && P.length && color === 'gold' ? P.map(p => coef(p, dc)) : color,
+      colorscale: 'YlOrRd', reversescale: true,
+      colorbar: dc && color === 'gold' ? {title: {text: 'colour = ' + dc.label.replace('coefficient of ', ''), side: 'top', font: {color: fg, size: 12}}, thickness: 12, len: 0.6, tickfont: {color: fg}} : undefined},
+    projection: {x: {show: true, opacity: 0.25, scale: 0.6}, y: {show: true, opacity: 0.25, scale: 0.6}, z: {show: true, opacity: 0.25, scale: 0.6}},
+  });
+  // wireframe of the search box
+  const [x0, x1, y0, y1, z0, z1] = [dx.lo, dx.hi, dy.lo, dy.hi, dz.lo, dz.hi];
+  const E = [[[x0,y0,z0],[x1,y0,z0]],[[x0,y1,z0],[x1,y1,z0]],[[x0,y0,z1],[x1,y0,z1]],[[x0,y1,z1],[x1,y1,z1]],
+             [[x0,y0,z0],[x0,y1,z0]],[[x1,y0,z0],[x1,y1,z0]],[[x0,y0,z1],[x0,y1,z1]],[[x1,y0,z1],[x1,y1,z1]],
+             [[x0,y0,z0],[x0,y0,z1]],[[x1,y0,z0],[x1,y0,z1]],[[x0,y1,z0],[x0,y1,z1]],[[x1,y1,z0],[x1,y1,z1]]];
+  const box = {type: 'scatter3d', mode: 'lines', name: 'search box', hoverinfo: 'skip',
+    x: E.flatMap(e => [e[0][0], e[1][0], null]), y: E.flatMap(e => [e[0][1], e[1][1], null]),
+    z: E.flatMap(e => [e[0][2], e[1][2], null]), line: {color: 'rgba(128,128,140,0.5)', width: 2}};
+  const axis = d => ({title: {text: d.label}, range: [d.lo - 0.5, d.hi + 0.5], color: fg, gridcolor: line, zeroline: false});
+  Plotly.react('plot', [box, pts(D.target, 'π hits', 'gold'), pts(D.null, 'control hits', '#e0443c')], {
+    paper_bgcolor: 'rgba(0,0,0,0)', font: {color: fg}, margin: {l: 0, r: 0, t: 0, b: 0},
+    legend: {x: 0, y: 1}, scene: {xaxis: axis(dx), yaxis: axis(dy), zaxis: axis(dz), aspectmode: 'cube'},
+  }, {responsive: true, displaylogo: false});
+}
+draw();
+</script></main></body></html>

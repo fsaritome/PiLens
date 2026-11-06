@@ -17,6 +17,7 @@ dependencies = [
     "uvicorn>=0.27",
     "pydantic>=2",
     "anthropic>=2",
+    "httpx>=0.27",  # export-site renders pages in-process
 ]
 
 [project.optional-dependencies]
