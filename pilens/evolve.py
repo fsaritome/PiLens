@@ -33,7 +33,8 @@ from .sources import data_dir
 
 MODEL = "claude-opus-5-5"
 MAX_SIZE = 400_000
-MAX_DEG_A, MAX_DEG_B, MAX_COEF = 2, 4, 30
+MAX_DEG_A, MAX_DEG_B, MAX_COEF = 4, 8, 10**6
+MAX_PSLQ = 3000
 
 
 class FamilyProposal(BaseModel):
@@ -49,30 +50,17 @@ class Proposal(BaseModel):
     notes: str = Field(description="what you learned from the results so far, in 2-4 sentences")
 
 
-SYSTEM = f"""You are steering a search for continued-fraction formulas for pi, in the spirit of \
-the Ramanujan Machine and FunSearch.
+SYSTEM = f"""You are steering a search for continued-fraction formulas for pi, in the spirit of the Ramanujan Machine and FunSearch.
 
-Objects: generalised continued fractions a(0) + b(1)/(a(1) + b(2)/(a(2) + ...)) with integer \
-polynomial terms a(n), b(n). A *family* is a set of [lo, hi] ranges, one per polynomial \
-coefficient (constant term first); every combination is evaluated.
+Objects: generalised continued fractions a(0) + b(1)/(a(1) + b(2)/(a(2) + ...)) with integer polynomial terms a(n), b(n). A *family* is a set of [lo, hi] ranges, one per polynomial coefficient (constant term first); every combination is evaluated.
 
-Judge (mechanical, not you): each fraction's limit is matched against (p0 + p1*pi)/(q0 + q1*pi) \
-with |p|,|q| <= M (default 6, a family may ask for up to 12) and then re-computed at 600-bit precision to depth 16,000. "verified" = the \
-error keeps shrinking to 30+ digits; "probable" = 8-30 digits with a clean convergence law. \
-The same search is run against a random constant as a control; any hit there would mean a \
-false positive. Fractions that converge too slowly (< 7 digits at depth 2000) are skipped.
+Judge (mechanical, not you): each fraction's limit is matched against (p0 + p1*pi)/(q0 + q1*pi) with |p|,|q| <= M (M = 2..12) from a table, and fractions that converge fast (12+ digits after 30 terms) and miss the table also get an integer-relation search (PSLQ) for the same form with coefficients up to 10^6 (at most {MAX_PSLQ:,} such fractions per family are checked; larger fast families are sampled). Every match is re-computed at 600-bit precision to depth 16,000. The same search runs against a random constant as a control; a hit there would be a false positive.
 
-Constraints: degree of a(n) <= {MAX_DEG_A}, degree of b(n) <= {MAX_DEG_B}, |coefficients| <= \
-{MAX_COEF}, at most {MAX_SIZE:,} combinations per family (product of range widths). The sign \
-symmetry a -> -a is removed automatically.
+GOAL: find a new SPEED CLASS. Each verified identity gets a fingerprint (delta, r) computed on its simplest form at depth 2000: r = convergence rate (the error falls like exp(-r n)) and delta = the irrationality-measure exponent of its convergents. Formulas that are the same up to the known equivalences (index shift, scaling, polynomial equivalence a -> c(n) a, b -> c(n) c(n-1) b, coboundaries, Mobius maps) share delta, and r up to a small integer factor (folds). The Ramanujan Machine group's collection of 149 published pi formulas plus their conservative matrix field fall into the classes listed below; everything this search has found so far falls into three of them. A round scores one point per identity whose (delta, r) matches NO known class (|delta difference| <= 0.015 and r equal or in ratio 2, 3, 4 counts as a match; slow, power-law convergence, r < 0.05, never scores). New cores in known classes are logged but score nothing.
 
-Goal: maximise the number of *new distinct cores* that are verified. A core is what is left \
-after removing index shifts (n -> n + k), scalings (a -> c*a, b -> c^2*b) and polynomial \
-equivalence transforms (a -> c(n) a, b -> c(n) c(n-1) b for a linear c(n)), so dressed-up copies \
-of known fractions, e.g. degree-lifted ones that factor, score nothing. Prefer families that differ structurally from those already \
-searched (e.g. other degree pairs, the balance between the leading terms of a and b that \
-governs convergence, b(n) with a factor like n^2 or (2n-1)^2), rather than widening ranges \
-blindly. Known classical formulas: {'; '.join(KNOWN.values())}."""
+Useful theory: if deg b = 2 deg a with leading coefficients alpha (of a) and beta (of b), the convergents grow like the roots of x^2 - alpha x - beta, and r = ln|lambda_big/lambda_small|, so the leading coefficients choose the speed; the lower coefficients decide whether the limit is related to pi at all. Equal-magnitude roots (alpha^2 + 4 beta = 0) give slow power-law convergence. Known fast pi formulas often come from hypergeometric series: their b(n) factors into linear factors like (2n-1), (3n-1), (4n-1), and a(n) is a fixed polynomial combination; the speed class reflects the series' ratio z (r = ln|lambda ratio| relates to z).
+
+Constraints: degree of a(n) <= {MAX_DEG_A}, degree of b(n) <= {MAX_DEG_B}, |coefficients| <= {MAX_COEF:,}, at most {MAX_SIZE:,} combinations per family (product of range widths). Fix leading coefficients (lo = hi) to target a speed and vary the lower ones. The sign symmetry a -> -a is removed automatically."""
 
 
 def evolve_dir() -> Path:
@@ -127,12 +115,50 @@ def summary_for_prompt(max_identities: int = 80, detailed_hunts: int = 30) -> st
         if fr:
             lines.append("\n## Human ratings of identities")
             lines += [f"- {r['key']}: {'+1' if r['rating'] > 0 else '-1'} {r.get('note', '')}" for r in fr[-30:]]
+    lines += _class_summary()
     hist = history()
-    if hist:
-        lines.append("\n## Round scores (new cores): " + ", ".join(f"r{r['round']}={r['score']}" for r in hist))
+    old_h = [r for r in hist if r.get("scoring") != "speed classes"]
+    new_h = [r for r in hist if r.get("scoring") == "speed classes"]
+    if old_h:
+        lines.append("\n## Earlier round scores (scored by new cores, before the speed-class goal): "
+                     + ", ".join(f"r{r['round']}={r['score']}" for r in old_h[-40:]))
+    if new_h:
+        lines.append("\n## Round scores (new speed classes / new cores): "
+                     + ", ".join(f"r{r['round']}={r['score']}/{r.get('new_cores', 0)}" for r in new_h))
+        lines.append("Fingerprints of identities found in the speed-class rounds (relation: delta, r):")
+        for r in new_h[-10:]:
+            for x in r["results"]:
+                cs = x.get("classes") or []
+                if cs:
+                    lines.append(f"- r{r['round']} {x['family']['name']}: " + "; ".join(
+                        f"{c['relation']}: {c['delta']:.3f}, {c['r']:.3f}" for c in cs[:6] if c["delta"] is not None))
     for r in hist[-5:]:
         lines.append(f"\n## Round {r['round']} notes ({r['proposer']}): {r['notes']}")
     return "\n".join(lines)
+
+
+def _class_summary() -> list[str]:
+    """The known speed classes (published formulas + PiLens finds), fastest first."""
+    from .compare import class_table, known_classes
+
+    known = known_classes()
+    if not known:
+        return []
+    groups = class_table(known)
+
+    def short(c, n=90):
+        s = gcf.poly_str(tuple(c))
+        return s if len(s) <= n else s[:n] + "…"
+
+    lines = [f"\n## Known speed classes: {len(groups)} (from {len(known)} formulas; 'literature' = published, "
+             "'cmf' = Ramanujan Machine matrix field, 'PiLens' = found here). r, delta, count, sources, "
+             "degrees, simplest example"]
+    for g in groups:
+        r = "slow (power law)" if g["r"] is None or g["r"] < 0.05 else f"r={g['r']:.3f}"
+        d = "?" if g["delta"] is None else f"{g['delta']:.3f}"
+        lines.append(f"- {r}, delta={d}, {g['count']}x, {'+'.join(sorted(g['sources']))}, deg {len(g['a']) - 1}/"
+                     f"{len(g['b']) - 1}: a = {short(g['a'])}, b = {short(g['b'])} -> {g['limit'][:60]}")
+    return lines
 
 
 LAST_USAGE: dict = {}
@@ -194,7 +220,10 @@ def total_spend() -> float:
 
 
 def run_round(proposal: Proposal | None = None, proposer: str = MODEL, log=print) -> dict:
+    from .compare import classify, is_slow, known_classes
+
     before = _known_cores()
+    known = known_classes()
     usage = None
     if proposal is None:
         log(f"asking {MODEL} (effort {EFFORT}) for proposals...")
@@ -215,16 +244,28 @@ def run_round(proposal: Proposal | None = None, proposer: str = MODEL, log=print
         h = run_hunt(fam, M=fp.mobius, log=log)
         new = sorted(set(h.get("cores", [])) - before)  # up to shift, scaling, polynomial equivalence
         before |= set(new)
+        new_classes = []
+        for c in h.get("classes", []):
+            if is_slow(c["r"]) or c["delta"] is None:
+                continue
+            if classify(c["delta"], c["r"], known) is None:
+                new_classes.append(c)
+            known.append({"source": f"PiLens {h['id']}", **{k: c[k] for k in ("a", "b", "delta", "r")},
+                          "limit": c["relation"]})
         results.append({"family": fp.model_dump(), "hunt_id": h["id"], "n_candidates": h["n_candidates"],
                         "verified": h["target"]["count"]["verified"], "probable": h["target"]["count"]["probable"],
                         "null_hits": h["null"]["count"]["verified"] + h["null"]["count"]["probable"],
-                        "new_distinct": len(new), "new_cores": new})
-        log(f"  new distinct cores this family: {len(new)}")
+                        "new_distinct": len(new), "new_cores": new, "new_classes": new_classes,
+                        "classes": [{k: c[k] for k in ("relation", "delta", "r")} for c in h.get("classes", [])]})
+        log(f"  new distinct cores: {len(new)}; NEW SPEED CLASSES: {len(new_classes)}"
+            + "".join(f"\n    !! {c['relation']}  delta={c['delta']:.4f} r={c['r']:.4f}  a={c['a']} b={c['b']}"
+                      for c in new_classes))
     rec = {"round": len(history()) + 1, "proposer": proposer, "ts": time.strftime("%Y-%m-%d %H:%M:%S"),
-           "notes": proposal.notes, "results": results, "usage": usage,
-           "score": sum(r.get("new_distinct", 0) for r in results)}
+           "notes": proposal.notes, "results": results, "usage": usage, "scoring": "speed classes",
+           "new_cores": sum(r.get("new_distinct", 0) for r in results),
+           "score": sum(len(r.get("new_classes", [])) for r in results)}
     _append(rec)
-    log(f"\nround {rec['round']} score (new distinct cores): {rec['score']}")
+    log(f"\nround {rec['round']} score (new speed classes): {rec['score']}; new cores: {rec['new_cores']}")
     return rec
 
 

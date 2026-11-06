@@ -7,7 +7,11 @@ Pipeline for one family:
 2. float64 scan to depth 2000; keep fractions that clearly converge (>= 7 digits);
 3. match each limit against the Mobius table (p0 + p1 c)/(q0 + q1 c), |coefs| <= M,
    for c = pi **and** for c = a seeded random real (the control);
-4. verify every match at 600-bit precision to depth 16,000 (``gcf.verify``).
+   and, for fast fractions the table misses, run an integer-relation search (PSLQ) for
+   (p0 + p1 c)/(q0 + q1 c) with coefficients up to 10^6;
+4. verify every match at 600-bit precision to depth 16,000 (``gcf.verify``);
+5. for the target constant, compute each distinct core's speed-class fingerprint (δ, r)
+   (``compare.dynamics``).
 
 Any "verified" hit against the random constant would mean the judge is broken. A real
 identity keeps converging to its target, while a coincidence stalls.
@@ -39,6 +43,8 @@ PRESETS = {
               "a": [[-3, 3], [0, 3]], "b": [[-3, 3], [-3, 3], [-3, 3]]},
 }
 
+EARLY = 30  # a fraction is "fast" if it has 12+ digits after this many terms
+
 STATUS_RANK = {"verified": 2, "probable": 1, "inconclusive": 0, "rejected": -1}
 
 
@@ -54,15 +60,16 @@ def hunt_id(family: gcf.Family, constant: str, depth: int, M: int) -> str:
 
 
 def run_hunt(family: gcf.Family, constant: str = "pi", depth: int = 2000, M: int = 6,
-             null_seed: int = 7, max_verify: int = 400, save: bool = True, log=print) -> dict:
+             null_seed: int = 7, max_verify: int = 400, max_pslq: int = 3000, save: bool = True,
+             log=print) -> dict:
     t0 = time.time()
     A, B = family.enumerate()
     log(f"family {family.name or family.to_dict()}: {len(A):,} continued fractions")
-    xs, hs, terms = [], [], []
+    xs, hs, terms, earlies = [], [], [], []
     for s in range(0, len(A), 50_000):
-        x, h, t = gcf.scan(A[s:s + 50_000], B[s:s + 50_000], depth)
-        xs.append(x), hs.append(h), terms.append(t)
-    x, h, term = np.concatenate(xs), np.concatenate(hs), np.concatenate(terms)
+        x, h, t, e = gcf.scan(A[s:s + 50_000], B[s:s + 50_000], depth, early=EARLY)
+        xs.append(x), hs.append(h), terms.append(t), earlies.append(e)
+    x, h, term, x_early = (np.concatenate(v) for v in (xs, hs, terms, earlies))
     with np.errstate(all="ignore"):
         scale = np.maximum(1.0, np.abs(x))
         diff = np.abs(x - h)
@@ -70,8 +77,10 @@ def run_hunt(family: gcf.Family, constant: str = "pi", depth: int = 2000, M: int
         digits = np.where(conv, np.clip(-np.log10(diff / scale + 1e-17), 0, 16), 0.0)
         tol = 2 * diff + 1e-13 * scale
     eligible = conv & (tol < 1e-7 * scale)
+    with np.errstate(all="ignore"):
+        fast = eligible & (np.abs(x_early - x) < 1e-12 * scale)  # 12+ digits after EARLY terms
     log(f"  converged: {conv.sum():,}; precise enough to match: {eligible.sum():,}; "
-        f"scan {time.time() - t0:.1f}s")
+        f"fast: {fast.sum():,}; scan {time.time() - t0:.1f}s")
 
     sides = {}
     for side, (cname, seed) in {"target": (constant, None), "null": ("random", null_seed)}.items():
@@ -83,10 +92,27 @@ def run_hunt(family: gcf.Family, constant: str = "pi", depth: int = 2000, M: int
         pairs = gcf.match(table, x[idx], tol[idx])
         pairs = [(int(idx[i]), j) for i, j in pairs]
         pairs.sort(key=lambda p: -digits[p[0]])
+        found = [(i, tuple(int(c) for c in table.coefs[j]), "table") for i, j in pairs]
+        # fast fractions the small table did not match: integer-relation search (PSLQ)
+        matched = {i for i, _ in pairs}
+        cand = np.array([i for i in np.nonzero(fast)[0] if int(i) not in matched], dtype=np.int64)
+        n_cand = len(cand)
+        if n_cand > max_pslq:
+            cand = np.sort(np.random.default_rng(0).choice(cand, max_pslq, replace=False))
+        tp = time.time()
+        for i in cand.tolist():
+            rel = gcf.pslq_relation(tuple(int(v) for v in A[i]), tuple(int(v) for v in B[i]), cname, seed)
+            if rel is not None:
+                found.append((i, rel, "pslq"))
+        n_pslq = sum(f[2] == "pslq" for f in found)
+        if n_cand:
+            log(f"  vs {cname:<6}: PSLQ on {len(cand):,} of {n_cand:,} unmatched fast fractions -> "
+                f"{n_pslq} relations ({time.time() - tp:.1f}s)")
         hits = []
-        for i, j in pairs[:max_verify]:
+        to_verify = [f for f in found if f[2] == "table"][:max_verify] + [f for f in found if f[2] == "pslq"][:max_verify]
+        for i, coefs, how in to_verify:
             a, b = tuple(int(v) for v in A[i]), tuple(int(v) for v in B[i])
-            v = gcf.verify(a, b, table.coefs[j], cname, seed)
+            v = gcf.verify(a, b, coefs, cname, seed)
             status = v.status
             if status == "rejected" and v.rate.startswith(("power", "exponential")):
                 status = "inconclusive"
@@ -94,8 +120,8 @@ def run_hunt(family: gcf.Family, constant: str = "pi", depth: int = 2000, M: int
             ca, cb = _trim(ca), _trim(cb)
             hits.append({
                 "a": list(a), "b": list(b), "a_str": gcf.poly_str(a), "b_str": gcf.poly_str(b),
-                "gcf": gcf.gcf_str(a, b), "coefs": [int(c) for c in table.coefs[j]],
-                "relation": gcf.mobius_str(table.coefs[j], "π" if cname == "pi" else ("c" if cname == "random" else cname)),
+                "gcf": gcf.gcf_str(a, b), "coefs": [int(c) for c in coefs], "found_by": how,
+                "relation": gcf.mobius_str(coefs, "π" if cname == "pi" else ("c" if cname == "random" else cname)),
                 "status": status, "digits": round(v.digits, 1), "rate": v.rate,
                 "scan_digits": round(float(digits[i]), 1),
                 "canonical": [list(ca), list(cb)], "scaled_by": sc,
@@ -105,11 +131,12 @@ def run_hunt(family: gcf.Family, constant: str = "pi", depth: int = 2000, M: int
             })
         hits.sort(key=lambda r: (-STATUS_RANK[r["status"]], -r["digits"]))
         sides[side] = {"constant": cname, "seed": seed, "table_size": len(table.values),
-                       "matches": len(pairs), "verified_checked": min(len(pairs), max_verify),
+                       "matches": len(pairs) + n_pslq, "verified_checked": len(to_verify),
+                       "pslq": {"candidates": n_cand, "checked": len(cand), "relations": n_pslq},
                        "count": {s: sum(r["status"] == s for r in hits) for s in STATUS_RANK},
                        "hits": hits}
         c = sides[side]["count"]
-        log(f"  vs {cname:<6}: {len(pairs):,} raw matches -> verified {c['verified']}, "
+        log(f"  vs {cname:<6}: {len(pairs):,} table + {n_pslq} PSLQ matches -> verified {c['verified']}, "
             f"probable {c['probable']}, inconclusive {c['inconclusive']}, rejected {c['rejected']}")
 
     hid = hunt_id(family, constant, depth, M)
@@ -122,6 +149,7 @@ def run_hunt(family: gcf.Family, constant: str = "pi", depth: int = 2000, M: int
         "cores": sorted({r["core"] for r in distinct(sides["target"]["hits"])}),
         "elapsed_s": round(time.time() - t0, 1), "saved": time.strftime("%Y-%m-%d %H:%M:%S"),
     }
+    res["classes"] = speed_classes(res["distinct_relations"], log)
     if save:
         d = hunts_dir() / hid
         d.mkdir(parents=True, exist_ok=True)
@@ -135,6 +163,26 @@ def run_hunt(family: gcf.Family, constant: str = "pi", depth: int = 2000, M: int
         f"polynomial equivalences; "
         f"{res['elapsed_s']}s")
     return res
+
+
+def speed_classes(relations: list[dict], log=print) -> list[dict]:
+    """(δ, r) fingerprint of each distinct core, computed on its simplest form."""
+    from .compare import dynamics
+    from .novelty import core_form
+
+    out, seen = [], set()
+    for r in relations:
+        if r["core"] in seen:
+            continue
+        seen.add(r["core"])
+        ca, cb = core_form(r["a"], r["b"])
+        try:
+            d = dynamics(ca, cb)
+        except Exception as e:  # e.g. a zero denominator in the reduced form
+            log(f"  fingerprint failed for {r['core']}: {e}")
+            continue
+        out.append({"core": r["core"], "a": list(ca), "b": list(cb), "relation": r["relation"], **d})
+    return out
 
 
 def _trim(c):
@@ -223,6 +271,19 @@ def migrate_cores() -> int:
         for r in h["distinct_relations"]:
             r["core"] = gcf.family_key(tuple(r["a"]), tuple(r["b"]))
         h["cores"] = sorted({r["core"] for r in h["distinct_relations"]})
+        f.write_text(json.dumps(h, indent=1, ensure_ascii=False), encoding="utf-8")
+        n += 1
+    return n
+
+
+def backfill_classes(log=print) -> int:
+    """Add speed-class fingerprints to hunts saved before they existed."""
+    n = 0
+    for f in sorted(hunts_dir().glob("*/hunt.json")):
+        h = json.loads(f.read_text(encoding="utf-8"))
+        if "classes" in h or h["constant"] != "pi":
+            continue
+        h["classes"] = speed_classes(h["distinct_relations"], log)
         f.write_text(json.dumps(h, indent=1, ensure_ascii=False), encoding="utf-8")
         n += 1
     return n

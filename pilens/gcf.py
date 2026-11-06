@@ -101,11 +101,13 @@ class Family:
 # ---------------------------------------------------------------------------
 
 
-def scan(A: np.ndarray, B: np.ndarray, depth: int = 2000) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+def scan(A: np.ndarray, B: np.ndarray, depth: int = 2000, early: int | None = None):
     """Evaluate many GCFs in parallel (float64, renormalised).
 
     Returns (x_depth, x_half, terminated): the convergents at ``depth`` and ``depth//2``,
     and a flag for b(n) == 0 at some n <= depth (finite, i.e. rational, fraction).
+    With ``early``, also returns the convergent at that depth (a 4th array), which shows
+    which fractions converge fast.
     """
     K = len(A)
     with np.errstate(all="ignore"):
@@ -125,12 +127,18 @@ def scan(A: np.ndarray, B: np.ndarray, depth: int = 2000) -> tuple[np.ndarray, n
                 p, q, p_prev, q_prev = p / s, q / s, p_prev / s, q_prev / s
             if n == depth // 2:
                 half = p / q
+            if n == early:
+                x_early = p / q
         x = p / q
+    if early is not None:
+        return x, half, term, x_early
     return x, half, term
 
 
 def poly_vals(C: np.ndarray, n: int) -> np.ndarray:
-    out = np.zeros(len(C), dtype=np.int64)
+    """Values at n for many polynomials, in float64 (high degrees overflow int64; values
+    below 2^53, including the b(n) == 0 test, are still exact)."""
+    out = np.zeros(len(C), dtype=np.float64)
     for k in range(C.shape[1] - 1, -1, -1):
         out = out * n + C[:, k]
     return out
@@ -260,6 +268,38 @@ def deep_convergents(a, b, depths: list[int], prec: int = 400) -> list:
     return out
 
 
+def pslq_relation(a, b, constant: str = "pi", seed: int | None = None, digits: int = 50,
+                  max_coef: int = 10**6, depths=(200, 400)):
+    """Find (p0, p1, q0, q1) with limit = (p0 + p1 c)/(q0 + q1 c) and |coefficients| up
+    to ``max_coef`` by integer-relation search (PSLQ), for fractions that converge fast
+    enough to give ``digits`` digits by ``depths[1]``. Returns None if there is no such
+    relation or the fraction is too slow. Any result still has to pass ``verify``."""
+    import mpmath
+
+    prec = int(digits * 3.33) + 140
+    with gmpy2.context(gmpy2.get_context(), precision=prec):
+        x1, x2 = deep_convergents(a, b, list(depths), prec)
+        if not (gmpy2.is_finite(x1) and gmpy2.is_finite(x2)) or x2 == 0:
+            return None
+        if abs(x1 - x2) > abs(x2) * mpfr(10) ** (-digits):
+            return None
+        c = constant_mpfr(constant, seed)
+        sx, sc = format(x2, f".{digits + 10}e"), format(c, f".{digits + 10}e")
+    with mpmath.workdps(digits):
+        L, C = mpmath.mpf(sx), mpmath.mpf(sc)
+        try:
+            rel = mpmath.pslq([L, L * C, 1, C], maxcoeff=max_coef, maxsteps=4000)
+        except ValueError:  # e.g. L == 0 to working precision
+            return None
+    if rel is None:
+        return None
+    r0, r1, r2, r3 = (int(v) for v in rel)
+    p0, p1, q0, q1 = -r2, -r3, r0, r1
+    if (q0 == 0 and q1 == 0) or p0 * q1 - p1 * q0 == 0:
+        return None
+    return p0, p1, q0, q1
+
+
 @dataclass
 class Verdict:
     status: str  # "verified" | "probable" | "rejected"
@@ -379,8 +419,13 @@ def _pmul(p, q):
 
 
 def _divisors(v: int) -> list[int]:
-    v = abs(v)
-    return [d for d in range(1, v + 1) if v % d == 0] if v else [0]
+    v = abs(int(v))
+    if v == 0:
+        return [0]
+    if v > 10**12:  # too big to factor quickly: only try the trivial divisor
+        return [1]
+    small = [d for d in range(1, math.isqrt(v) + 1) if v % d == 0]
+    return sorted(set(small + [v // d for d in small]))
 
 
 def _linear_factors(a) -> list[tuple[int, int]]:

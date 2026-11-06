@@ -142,3 +142,19 @@ def test_compare_dynamics():
     assert -0.3 < d["delta"] < -0.1
     assert _ratio_label(0.7, 0.7) == "same rate" and _ratio_label(1.4, 0.7) == "ours = 2× theirs"
     assert _ratio_label(0.7, 1.76) is None
+
+
+def test_pslq_and_speed_classes():
+    from pilens import gcf
+    from pilens.compare import classify, same_class
+
+    # a published degree-3/6 formula with a large-coefficient limit, 72/(3 pi - 8)
+    a, b = (55, 166, 148, 40), (0, 0, 288, 96, -832, -896, -256)
+    rel = gcf.pslq_relation(a, b)
+    assert rel is not None and gcf.mobius_str(rel) == "72/(3π - 8)"
+    assert gcf.pslq_relation(a, b, "random", 7) is None
+    assert same_class(-0.65, 0.69, -0.651, 1.387)  # a 2-fold
+    assert not same_class(-0.65, 0.69, -0.20, 1.76)
+    assert same_class(-0.99, 0.01, -0.97, 0.03)  # slow ones are one class
+    known = [{"delta": -0.2, "r": 1.763}]
+    assert classify(-0.205, 3.527, known) is not None and classify(-0.5, 4.0, known) is None

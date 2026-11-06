@@ -80,6 +80,81 @@ def dynamics(a, b, depth: int = DEPTH) -> dict:
     return {"delta": delta, "r": r}
 
 
+# ---------------------------------------------------------------------------
+# speed classes: (δ, r) fingerprints
+# ---------------------------------------------------------------------------
+
+SLOW_R = 0.05  # below this the convergence is power-law-like; δ ≈ -1 for all of them
+DELTA_TOL = 0.015
+
+
+def is_slow(r) -> bool:
+    return r is None or r < SLOW_R
+
+
+def reference_dynamics() -> list[dict]:
+    """δ and r of every reference fraction, computed with ``dynamics`` (cached)."""
+    cache = data_dir() / "ramanujan" / "reference_dynamics.json"
+    if cache.exists():
+        return json.loads(cache.read_text(encoding="utf-8"))
+    out = []
+    for r in load_reference():
+        d = dynamics(r["a"], r["b"])
+        out.append({"source": r["kind"], "a": r["a"], "b": r["b"], "limit": r["limit"], **d})
+    cache.write_text(json.dumps(out), encoding="utf-8")
+    return out
+
+
+def same_class(d1, r1, d2, r2, delta_tol: float = DELTA_TOL) -> bool:
+    if is_slow(r1) or is_slow(r2):
+        return is_slow(r1) and is_slow(r2)
+    if d1 is None or d2 is None or abs(d1 - d2) > delta_tol:
+        return False
+    return _ratio_label(r1, r2) is not None
+
+
+def known_classes(include_pilens: bool = True) -> list[dict]:
+    """Every known fingerprint: the reference formulas plus the classes PiLens has found."""
+    known = []
+    try:
+        known += [dict(x) for x in reference_dynamics()]
+    except FileNotFoundError:
+        pass
+    if include_pilens:
+        from .hunt import list_hunts
+
+        for h in list_hunts():
+            for c in h.get("classes", []):
+                known.append({"source": f"PiLens {h['id']}", "a": c["a"], "b": c["b"], "limit": c["relation"],
+                              "delta": c["delta"], "r": c["r"]})
+    return known
+
+
+def classify(delta, r, known: list[dict]) -> dict | None:
+    """The first known formula with the same fingerprint, or None (a new class)."""
+    for k in known:
+        if same_class(delta, r, k["delta"], k["r"]):
+            return k
+    return None
+
+
+def class_table(known: list[dict]) -> list[dict]:
+    """Group fingerprints into classes (greedy), for showing Claude what is known."""
+    groups: list[dict] = []
+    for k in sorted(known, key=lambda k: (is_slow(k["r"]), -(k["r"] or 0))):
+        for g in groups:
+            if same_class(k["delta"], k["r"], g["delta"], g["r"]):
+                g["count"] += 1
+                g["sources"].add(k["source"].split(" ")[0])
+                if len(k["a"]) + len(k["b"]) < len(g["a"]) + len(g["b"]):
+                    g.update(a=k["a"], b=k["b"], limit=k["limit"])
+                break
+        else:
+            groups.append({"delta": k["delta"], "r": k["r"], "a": k["a"], "b": k["b"], "limit": k["limit"],
+                           "count": 1, "sources": {k["source"].split(" ")[0]}})
+    return groups
+
+
 def results_path() -> Path:
     return data_dir() / "ramanujan" / "comparison.json"
 
