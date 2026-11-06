@@ -1,0 +1,31 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pilens"
+version = "0.1.0"
+description = "Look at the digits of pi through many 'lenses' and test honestly whether any visual structure beats random controls."
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "numpy>=1.26",
+    "scipy>=1.11",
+    "pillow>=10",
+    "gmpy2>=2.1",
+    "fastapi>=0.110",
+    "uvicorn>=0.27",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8", "httpx>=0.27"]
+
+[project.scripts]
+pilens = "pilens.cli:main"
+
+[tool.setuptools]
+packages = ["pilens"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+markers = ["slow: end-to-end judge validation (takes a minute or two)"]
